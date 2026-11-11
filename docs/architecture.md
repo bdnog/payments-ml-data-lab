@@ -22,7 +22,7 @@ flowchart LR
         serving["serving<br/>online inference"]
         training["training<br/>offline, LightGBM + PyTorch"]
         risk --> serving
-        training -. "model artifacts" .-> serving
+        training -.->|model artifacts| serving
     end
 
     subgraph batch["Batch path: settlement-service"]
