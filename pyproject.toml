@@ -12,6 +12,16 @@ package = false
 [tool.uv.workspace]
 members = ["packages/*", "services/*"]
 
+# CPU-only torch wheels on Linux (CI, Docker): the default PyPI wheels pull in multi-GB CUDA libs.
+# On macOS the regular PyPI wheel is already CPU/MPS only.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
 [dependency-groups]
 dev = ["pytest", "pytest-cov", "httpx", "ruff"]
 

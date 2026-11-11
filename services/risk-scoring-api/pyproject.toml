@@ -8,10 +8,21 @@ dependencies = [
     "uvicorn[standard]>=0.30",
     "pydantic-settings>=2.4",
     "payments-shared[http]",
+    "numpy>=2.0",
+    "torch>=2.6",
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.2",
 ]
+
+[dependency-groups]
+# Tests generate a small dataset through payments_datagen, and cross-check the hand-written
+# metrics against scikit-learn. Neither is needed at runtime.
+dev = ["payments-datagen", "scikit-learn>=1.5"]
 
 [tool.uv.sources]
 payments-shared = { workspace = true }
+payments-datagen = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
