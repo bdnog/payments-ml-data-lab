@@ -3,7 +3,11 @@ name = "payments-shared"
 version = "0.1.0"
 description = "Shared schemas and utilities used by the payments services."
 requires-python = ">=3.12"
-dependencies = ["pydantic>=2.7"]
+dependencies = ["pydantic>=2.7", "polars>=1.0", "pyyaml>=6.0"]
+
+[project.optional-dependencies]
+# Web helpers (payments_shared.problem). Only the HTTP services need FastAPI.
+http = ["fastapi>=0.115"]
 
 [build-system]
 requires = ["hatchling"]
