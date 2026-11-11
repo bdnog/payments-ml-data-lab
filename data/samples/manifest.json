@@ -1,0 +1,55 @@
+{
+  "manifest_version": 1,
+  "parameters": {
+    "break_rate": 0.06,
+    "days": 30,
+    "fraud_rate": 0.03,
+    "n_accounts": 300,
+    "n_merchants": 25,
+    "name": "sample",
+    "seed": 42,
+    "start_date": "2026-01-01",
+    "target_transactions": 3000
+  },
+  "profile": "sample",
+  "realized": {
+    "approval_rate": 0.924941,
+    "approved_fraud_with_chargeback_share": 0.880952,
+    "break_rate": 0.059993,
+    "breaks_by_type": {
+      "AMOUNT_MISMATCH": 39,
+      "CHARGEBACK_NOT_IN_LEDGER": 15,
+      "DUPLICATE_IN_PSP": 20,
+      "FEE_MISMATCH": 21,
+      "MISSING_IN_LEDGER": 25,
+      "MISSING_IN_PSP": 40
+    },
+    "fraud_by_pattern": {
+      "ACCOUNT_TAKEOVER": 27,
+      "CARD_TESTING": 27,
+      "GEO_MISMATCH": 22,
+      "VELOCITY_BURST": 14
+    },
+    "fraud_rate": 0.030293,
+    "fraud_transactions": 90,
+    "fraud_with_chargeback_share": 0.411111,
+    "psp_records_by_type": {
+      "CHARGEBACK": 22,
+      "REFUND": 59,
+      "SALE": 1316
+    },
+    "refunded_payment_share": 0.035246,
+    "voided_rate": 0.029476
+  },
+  "row_counts": {
+    "accounts": 300,
+    "chargebacks": 38,
+    "injected_breaks": 160,
+    "merchants": 25,
+    "payments": 2748,
+    "psp_settlement": 1397,
+    "refunds": 109,
+    "transactions": 2971
+  },
+  "seed": 42
+}

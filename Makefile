@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help sync lint format test run-risk run-settlement-api up down build
+.PHONY: help sync lint format test run-risk run-settlement-api up down build data-sample
 
 help: ## List available targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -32,3 +32,6 @@ down: ## Stop the Docker Compose stack
 
 build: ## Build both service images
 	docker compose build
+
+data-sample: ## Regenerate the committed sample in data/samples (deterministic, seed 42)
+	uv run python -m payments_datagen generate --profile sample --out data/samples

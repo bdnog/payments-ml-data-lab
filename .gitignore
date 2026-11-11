@@ -219,7 +219,8 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Project: generated data (only small synthetic samples are tracked)
+# Project: generated data. Local runs go to data/out/ (ignored); data/samples/ is tracked.
+data/out/
 data/**/*.parquet
 !data/samples/**/*.parquet
 
