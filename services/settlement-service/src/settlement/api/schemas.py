@@ -35,17 +35,27 @@ class Mart(StrEnum):
 
 
 class DailySettlement(BaseModel):
-    """One row of the ``daily_settlement_by_merchant`` mart."""
+    """One row of the ``daily_settlement_by_merchant`` mart: the ledger-expected payout."""
 
     settlement_date: dt.date = Field(description="Day the money moves.", examples=["2026-01-14"])
     merchant_id: str = Field(pattern=MERCHANT_ID, examples=["mer_5d7a1e"])
     currency: Currency = Field(examples=["BRL"])
-    payment_count: int = Field(ge=0, description="Number of SALE records settled.", examples=[132])
-    gross_minor: int = Field(ge=0, description="Sum of SALE gross amounts.", examples=[1_250_000])
-    fee_minor: int = Field(ge=0, description="Sum of SALE fees.", examples=[18_750])
-    refunds_minor: int = Field(ge=0, description="Sum of REFUND gross amounts.", examples=[40_000])
+    payment_count: int = Field(
+        ge=0, description="Number of expected SALE records due on the date.", examples=[132]
+    )
+    gross_minor: int = Field(
+        ge=0, description="Sum of the amounts of the SALEs due.", examples=[1_250_000]
+    )
+    fee_minor: int = Field(
+        ge=0, description="Sum of the contracted fees of those SALEs.", examples=[18_750]
+    )
+    refunds_minor: int = Field(
+        ge=0, description="Sum of the refund amounts due on the date.", examples=[40_000]
+    )
     chargebacks_minor: int = Field(
-        ge=0, description="Sum of CHARGEBACK gross amounts plus their flat fees.", examples=[0]
+        ge=0,
+        description="Sum of the chargeback amounts due; the flat PSP fee is not included.",
+        examples=[0],
     )
     net_minor: int = Field(
         description="gross - fee - refunds - chargebacks; can be negative.", examples=[1_191_250]

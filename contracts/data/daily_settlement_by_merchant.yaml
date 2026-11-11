@@ -1,9 +1,11 @@
 name: daily_settlement_by_merchant
 version: 1
 description: >-
-  Mart produced by the settlement batch (Phase 4). One row per settlement date, merchant and
-  currency, aggregated from the PSP records of that settlement_date. All amounts are positive
-  magnitudes in minor units and net_minor = gross - fee - refunds - chargebacks.
+  Mart produced by the settlement batch (Phase 4). The ledger-expected payout: what the platform
+  owes each merchant for a settlement date, from the expected SALE, REFUND and CHARGEBACK records due
+  that day. It is not what the PSP confirmed (differences are in reconciliation_breaks). One row
+  per settlement date, merchant and currency. All amounts are positive magnitudes in minor units
+  and net_minor = gross - fee - refunds - chargebacks. Hive-partitioned by settlement_date.
 primary_key: [settlement_date, merchant_id, currency]
 columns:
   - name: settlement_date
@@ -27,31 +29,33 @@ columns:
     type: int64
     nullable: false
     role: metadata
-    description: Number of SALE records settled.
+    description: Number of expected SALE records due on the settlement date.
     constraints: { min: 0 }
   - name: gross_minor
     type: int64
     nullable: false
     role: metadata
-    description: Sum of SALE gross amounts.
+    description: Sum of the amounts of the SALEs due (CAPTURED payments).
     constraints: { min: 0 }
   - name: fee_minor
     type: int64
     nullable: false
     role: metadata
-    description: Sum of SALE fees.
+    description: Sum of the contracted fees of those SALEs (round half up on mdr_bps).
     constraints: { min: 0 }
   - name: refunds_minor
     type: int64
     nullable: false
     role: metadata
-    description: Sum of REFUND gross amounts.
+    description: Sum of the refund amounts due on the settlement date.
     constraints: { min: 0 }
   - name: chargebacks_minor
     type: int64
     nullable: false
     role: metadata
-    description: Sum of CHARGEBACK gross amounts plus their flat fees.
+    description: >-
+      Sum of the chargeback amounts due on the settlement date. The flat PSP chargeback fee is
+      absorbed by the platform and is not included.
     constraints: { min: 0 }
   - name: net_minor
     type: int64

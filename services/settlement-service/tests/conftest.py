@@ -41,3 +41,9 @@ def seeded_datasets(tmp_path_factory) -> dict[int, Path]:
         write_world(generate_world(small_profile(seed)), directory)
         datasets[seed] = directory
     return datasets
+
+
+@pytest.fixture(scope="session", params=SEEDS, ids=[f"seed{s}" for s in SEEDS])
+def seeded_dataset(request, seeded_datasets) -> Path:
+    """Each seeded dataset in turn: tests that take this run once per seed."""
+    return seeded_datasets[request.param]

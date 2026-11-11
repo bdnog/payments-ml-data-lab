@@ -2,6 +2,7 @@
   "components": {
     "schemas": {
       "BreakType": {
+        "description": "Why a ledger item and a PSP record do not agree. There is no \"unclassified\".",
         "enum": [
           "AMOUNT_MISMATCH",
           "MISSING_IN_PSP",
@@ -53,10 +54,10 @@
         "type": "string"
       },
       "DailySettlement": {
-        "description": "One row of the ``daily_settlement_by_merchant`` mart.",
+        "description": "One row of the ``daily_settlement_by_merchant`` mart: the ledger-expected payout.",
         "properties": {
           "chargebacks_minor": {
-            "description": "Sum of CHARGEBACK gross amounts plus their flat fees.",
+            "description": "Sum of the chargeback amounts due; the flat PSP fee is not included.",
             "examples": [
               0
             ],
@@ -71,7 +72,7 @@
             ]
           },
           "fee_minor": {
-            "description": "Sum of SALE fees.",
+            "description": "Sum of the contracted fees of those SALEs.",
             "examples": [
               18750
             ],
@@ -80,7 +81,7 @@
             "type": "integer"
           },
           "gross_minor": {
-            "description": "Sum of SALE gross amounts.",
+            "description": "Sum of the amounts of the SALEs due.",
             "examples": [
               1250000
             ],
@@ -105,7 +106,7 @@
             "type": "integer"
           },
           "payment_count": {
-            "description": "Number of SALE records settled.",
+            "description": "Number of expected SALE records due on the date.",
             "examples": [
               132
             ],
@@ -114,7 +115,7 @@
             "type": "integer"
           },
           "refunds_minor": {
-            "description": "Sum of REFUND gross amounts.",
+            "description": "Sum of the refund amounts due on the date.",
             "examples": [
               40000
             ],
