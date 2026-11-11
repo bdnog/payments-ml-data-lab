@@ -1,0 +1,143 @@
+{
+  "best_epoch": 7,
+  "data_manifest": {
+    "parameters": {
+      "break_rate": 0.02,
+      "days": 180,
+      "fraud_rate": 0.01,
+      "n_accounts": 5000,
+      "n_merchants": 200,
+      "name": "full",
+      "seed": 42,
+      "start_date": "2026-01-01",
+      "target_transactions": 500000
+    },
+    "profile": "full",
+    "realized": {
+      "approval_rate": 0.935869,
+      "approved_fraud_with_chargeback_share": 0.849862,
+      "break_rate": 0.02,
+      "breaks_by_type": {
+        "AMOUNT_MISMATCH": 2228,
+        "CHARGEBACK_NOT_IN_LEDGER": 914,
+        "DUPLICATE_IN_PSP": 1395,
+        "FEE_MISMATCH": 1357,
+        "MISSING_IN_LEDGER": 1425,
+        "MISSING_IN_PSP": 1753
+      },
+      "fraud_by_pattern": {
+        "ACCOUNT_TAKEOVER": 1500,
+        "CARD_TESTING": 1500,
+        "GEO_MISMATCH": 1250,
+        "VELOCITY_BURST": 750
+      },
+      "fraud_rate": 0.010007,
+      "fraud_transactions": 5000,
+      "fraud_with_chargeback_share": 0.4936,
+      "psp_records_by_type": {
+        "CHARGEBACK": 3681,
+        "REFUND": 19184,
+        "SALE": 441894
+      },
+      "refunded_payment_share": 0.039947,
+      "voided_rate": 0.029992
+    }
+  },
+  "files": {
+    "model.pt": {
+      "sha256": "2215512e5535afb3c9ed2b2f9cd36b30bc0a42685dc292e9941a397d43fcb0bf"
+    },
+    "preprocessor.json": {
+      "sha256": "defd0cc97c54cffa890ea9824e192395d10e3cd10f27ecc9ea200f6cd0899f99"
+    }
+  },
+  "label_as_of": "2026-05-25T00:00:00+00:00",
+  "label_maturity_days": 45,
+  "metrics": {
+    "test.amount_weighted_recall_at_decline": 0.2911500248640745,
+    "test.amount_weighted_recall_at_review": 0.9850657723924094,
+    "test.brier": 0.007832715112788659,
+    "test.pr_auc": 0.46415475946875123,
+    "test.pr_auc_lift": 86.23216429934484,
+    "test.prevalence": 0.005382617533029699,
+    "test.recall_at_fpr_0_1pct": 0.16666666666666666,
+    "test.recall_at_fpr_1pct": 0.9498834498834499,
+    "test.roc_auc": 0.9950843909177242,
+    "validation.amount_weighted_recall_at_decline": 0.35040292703334525,
+    "validation.amount_weighted_recall_at_review": 0.9877733190986955,
+    "validation.brier": 0.007813884742924979,
+    "validation.pr_auc": 0.4487508342133994,
+    "validation.pr_auc_lift": 103.73668236412146,
+    "validation.prevalence": 0.004325864525320554,
+    "validation.recall_at_fpr_0_1pct": 0.19461077844311378,
+    "validation.recall_at_fpr_1pct": 0.9550898203592815,
+    "validation.roc_auc": 0.9960613530211029
+  },
+  "model_version": "mlp-2026.11.1",
+  "n_dense": 21,
+  "pos_weight": 50.0,
+  "reason_rules": {
+    "amount_above_normal_ratio": 3.0,
+    "high_risk_mccs": [
+      "4829",
+      "5732",
+      "5816",
+      "5944",
+      "5967"
+    ],
+    "high_velocity_1h": 5,
+    "high_velocity_24h": 15,
+    "max_reasons": 5,
+    "new_account_days": 30
+  },
+  "schema_version": 1,
+  "score_semantics": "ranking score in [0, 1] (sigmoid of the logit); NOT a calibrated probability, because the loss uses pos_weight",
+  "split": {
+    "train_end": "2026-04-10T00:00:00+00:00",
+    "validation_end": "2026-05-07T00:00:00+00:00",
+    "window_end": "2026-06-30T00:00:00+00:00",
+    "window_start": "2026-01-01T00:00:00+00:00"
+  },
+  "split_fractions": [
+    0.55,
+    0.15,
+    0.3
+  ],
+  "synthetic_data_notice": "Synthetic data: metrics say nothing about real-world fraud.",
+  "thresholds": {
+    "decline": 0.9863446950912476,
+    "decline_fpr": 0.002,
+    "review": 0.1095895767211914,
+    "review_fpr": 0.02
+  },
+  "torch_version": "2.15.0",
+  "train_config": {
+    "batch_size": 1024,
+    "learning_rate": 0.001,
+    "max_epochs": 30,
+    "model": {
+      "dropout": 0.1,
+      "embedding_dims": {
+        "card_bin": 8,
+        "channel": 3,
+        "ip_country": 4,
+        "issuer_country": 4,
+        "mcc": 8
+      },
+      "hidden_1": 64,
+      "hidden_2": 32
+    },
+    "patience": 5,
+    "pos_weight_cap": 50.0,
+    "seed": 42,
+    "weight_decay": 0.0001
+  },
+  "trained_at": "2026-11-11T18:43:47.332403+00:00",
+  "vocab_sizes": {
+    "card_bin": 41,
+    "channel": 4,
+    "ip_country": 13,
+    "issuer_country": 7,
+    "mcc": 16
+  }
+}

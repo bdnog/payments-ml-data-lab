@@ -226,3 +226,6 @@ data/**/*.parquet
 
 # Project: keep the env template tracked
 !.env.example
+
+# Project: trained model runs are local; only models/current is committed
+services/*/models/runs/

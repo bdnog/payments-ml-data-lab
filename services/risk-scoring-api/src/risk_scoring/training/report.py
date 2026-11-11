@@ -144,6 +144,7 @@ def render_report(
                 pct(b["traffic_share"], 2),
                 f"{b['positives']:,}",
                 pct(b["precision"]),
+                pct(b["precision_ground_truth"]),
                 pct(b["recall"]),
             ]
             for b in evaluation["bands"][split]
@@ -152,7 +153,16 @@ def render_report(
             f"**{split}**",
             "",
             table(
-                ["band", "rows", "share of traffic", "labeled fraud", "precision", "recall"], rows
+                [
+                    "band",
+                    "rows",
+                    "share of traffic",
+                    "labeled fraud",
+                    "precision (labels)",
+                    "precision (ground truth)",
+                    "recall (labels)",
+                ],
+                rows,
             ),
             "",
         ]

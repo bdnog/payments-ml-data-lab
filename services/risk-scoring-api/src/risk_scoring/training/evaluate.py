@@ -75,8 +75,14 @@ def split_metrics(split: SplitData, scores: np.ndarray, t: BandThresholds) -> di
 
 
 def band_table(split: SplitData, scores: np.ndarray, t: BandThresholds) -> list[dict[str, Any]]:
-    """Traffic share, precision and recall per band: the manual-review volume made visible."""
+    """Traffic share, precision and recall per band: the manual-review volume made visible.
+
+    ``precision`` counts a flagged row as right only if it has a chargeback label; fraud without
+    one (declined upstream, never reported) counts against it. ``precision_ground_truth`` uses the
+    analysis-only ``is_fraud``, so the gap between the two is the cost of the label bias.
+    """
     bands = assign_bands(scores, t)
+    is_fraud = split.frame["is_fraud"].to_numpy()
     total_positives = int(split.labels.sum())
     rows = []
     for band in BANDS:
@@ -90,6 +96,10 @@ def band_table(split: SplitData, scores: np.ndarray, t: BandThresholds) -> list[
                 "positives": positives,
                 "precision": positives / in_band.sum() if in_band.any() else float("nan"),
                 "recall": positives / total_positives if total_positives else float("nan"),
+                # Against the ground truth: includes fraud that has no chargeback label.
+                "precision_ground_truth": (
+                    float(is_fraud[in_band].mean()) if in_band.any() else float("nan")
+                ),
             }
         )
     return rows

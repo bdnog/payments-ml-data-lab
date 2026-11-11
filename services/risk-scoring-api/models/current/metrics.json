@@ -1,0 +1,471 @@
+{
+  "bands": {
+    "test": [
+      {
+        "band": "APPROVE",
+        "positives": 22,
+        "precision": 0.00014148637872044863,
+        "precision_ground_truth": 0.0003151287526046356,
+        "recall": 0.02564102564102564,
+        "rows": 155492,
+        "traffic_share": 0.9754708221979649
+      },
+      {
+        "band": "REVIEW",
+        "positives": 524,
+        "precision": 0.15931894192763757,
+        "precision_ground_truth": 0.3277591973244147,
+        "recall": 0.6107226107226107,
+        "rows": 3289,
+        "traffic_share": 0.020633367209947177
+      },
+      {
+        "band": "DECLINE",
+        "positives": 312,
+        "precision": 0.5024154589371981,
+        "precision_ground_truth": 0.998389694041868,
+        "recall": 0.36363636363636365,
+        "rows": 621,
+        "traffic_share": 0.0038958105920879286
+      }
+    ],
+    "validation": [
+      {
+        "band": "APPROVE",
+        "positives": 8,
+        "precision": 0.00010617542835149375,
+        "precision_ground_truth": 0.00022562278524692424,
+        "recall": 0.023952095808383235,
+        "rows": 75347,
+        "traffic_share": 0.9758710011656521
+      },
+      {
+        "band": "REVIEW",
+        "positives": 190,
+        "precision": 0.1207115628970775,
+        "precision_ground_truth": 0.2503176620076239,
+        "recall": 0.5688622754491018,
+        "rows": 1574,
+        "traffic_share": 0.020385960367828002
+      },
+      {
+        "band": "DECLINE",
+        "positives": 136,
+        "precision": 0.47058823529411764,
+        "precision_ground_truth": 1.0,
+        "recall": 0.40718562874251496,
+        "rows": 289,
+        "traffic_share": 0.0037430384665198806
+      }
+    ]
+  },
+  "label_coverage": {
+    "test": {
+      "coverage": 0.4911276473955352,
+      "fraud_rows": 1747,
+      "labeled_fraud_rows": 858,
+      "labels_that_are_not_fraud": 0,
+      "unlabeled_fraud_rows": 889
+    },
+    "train": {
+      "coverage": 0.49980415197806505,
+      "fraud_rows": 2553,
+      "labeled_fraud_rows": 1276,
+      "labels_that_are_not_fraud": 0,
+      "unlabeled_fraud_rows": 1277
+    },
+    "validation": {
+      "coverage": 0.47714285714285715,
+      "fraud_rows": 700,
+      "labeled_fraud_rows": 334,
+      "labels_that_are_not_fraud": 0,
+      "unlabeled_fraud_rows": 366
+    }
+  },
+  "patterns": {
+    "test": [
+      {
+        "pattern": "CARD_TESTING",
+        "recall_at_decline": 0.5188834154351396,
+        "recall_at_review": 0.986863711001642,
+        "rows": 609
+      },
+      {
+        "pattern": "ACCOUNT_TAKEOVER",
+        "recall_at_decline": 0.22560975609756098,
+        "recall_at_review": 0.9857723577235772,
+        "rows": 492
+      },
+      {
+        "pattern": "GEO_MISMATCH",
+        "recall_at_decline": 0.4661016949152542,
+        "recall_at_review": 0.9830508474576272,
+        "rows": 354
+      },
+      {
+        "pattern": "VELOCITY_BURST",
+        "recall_at_decline": 0.0958904109589041,
+        "recall_at_review": 0.9041095890410958,
+        "rows": 292
+      }
+    ],
+    "validation": [
+      {
+        "pattern": "CARD_TESTING",
+        "recall_at_decline": 0.6986899563318777,
+        "recall_at_review": 1.0,
+        "rows": 229
+      },
+      {
+        "pattern": "ACCOUNT_TAKEOVER",
+        "recall_at_decline": 0.2731707317073171,
+        "recall_at_review": 1.0,
+        "rows": 205
+      },
+      {
+        "pattern": "GEO_MISMATCH",
+        "recall_at_decline": 0.37244897959183676,
+        "recall_at_review": 0.9438775510204082,
+        "rows": 196
+      },
+      {
+        "pattern": "VELOCITY_BURST",
+        "recall_at_decline": 0.0,
+        "recall_at_review": 0.9142857142857143,
+        "rows": 70
+      }
+    ]
+  },
+  "permutation_importance": [
+    {
+      "baseline": 0.4487508342133994,
+      "group": "velocity",
+      "pr_auc_drop": 0.1516181457770172
+    },
+    {
+      "baseline": 0.4487508342133994,
+      "group": "device_and_card",
+      "pr_auc_drop": 0.1193405829711197
+    },
+    {
+      "baseline": 0.4487508342133994,
+      "group": "geo",
+      "pr_auc_drop": 0.09650102324289601
+    },
+    {
+      "baseline": 0.4487508342133994,
+      "group": "history",
+      "pr_auc_drop": 0.020110826756494744
+    },
+    {
+      "baseline": 0.4487508342133994,
+      "group": "merchant_and_channel",
+      "pr_auc_drop": 0.008703648358263724
+    },
+    {
+      "baseline": 0.4487508342133994,
+      "group": "time_of_day",
+      "pr_auc_drop": 0.002492951410730545
+    },
+    {
+      "baseline": 0.4487508342133994,
+      "group": "amount",
+      "pr_auc_drop": 0.0017819550635398973
+    }
+  ],
+  "sanity": {
+    "at_least_3x_prevalence": true,
+    "suspiciously_perfect": false,
+    "test_pr_auc_lift": 86.23216429934484
+  },
+  "splits": {
+    "test": {
+      "amount_weighted_recall_at_decline": 0.2911500248640745,
+      "amount_weighted_recall_at_review": 0.9850657723924094,
+      "brier": 0.007832715112788659,
+      "deciles": [
+        {
+          "decile": 1,
+          "max_score": 0.9973529577255249,
+          "min_score": 0.003981112502515316,
+          "positive_rate": 0.05350981745185371,
+          "positives": 853,
+          "rows": 15941
+        },
+        {
+          "decile": 2,
+          "max_score": 0.003980643581598997,
+          "min_score": 0.0006523581105284393,
+          "positive_rate": 0.000250925286995797,
+          "positives": 4,
+          "rows": 15941
+        },
+        {
+          "decile": 3,
+          "max_score": 0.0006523376214317977,
+          "min_score": 0.00019251841877121478,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 15940
+        },
+        {
+          "decile": 4,
+          "max_score": 0.00019248777243774384,
+          "min_score": 8.765039819991216e-05,
+          "positive_rate": 6.273525721455458e-05,
+          "positives": 1,
+          "rows": 15940
+        },
+        {
+          "decile": 5,
+          "max_score": 8.764454832999036e-05,
+          "min_score": 4.810223254025914e-05,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 15940
+        },
+        {
+          "decile": 6,
+          "max_score": 4.810052996617742e-05,
+          "min_score": 2.8037320589646697e-05,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 15940
+        },
+        {
+          "decile": 7,
+          "max_score": 2.8037160518579185e-05,
+          "min_score": 1.641726885281969e-05,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 15940
+        },
+        {
+          "decile": 8,
+          "max_score": 1.6416954167652875e-05,
+          "min_score": 8.901931323634926e-06,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 15940
+        },
+        {
+          "decile": 9,
+          "max_score": 8.901864021026995e-06,
+          "min_score": 3.90249033443979e-06,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 15940
+        },
+        {
+          "decile": 10,
+          "max_score": 3.9019992073008325e-06,
+          "min_score": 3.2782145886756098e-09,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 15940
+        }
+      ],
+      "label_rate": 0.005382617533029699,
+      "positives": 858,
+      "pr_auc": 0.46415475946875123,
+      "pr_auc_lift": 86.23216429934484,
+      "prevalence": 0.005382617533029699,
+      "recall_at_fpr_0_1pct": 0.16666666666666666,
+      "recall_at_fpr_1pct": 0.9498834498834499,
+      "roc_auc": 0.9950843909177242,
+      "rows": 159402
+    },
+    "train": {
+      "amount_weighted_recall_at_decline": 0.3236020647787988,
+      "amount_weighted_recall_at_review": 0.9927886346076656,
+      "brier": 0.008998699305944486,
+      "deciles": [
+        {
+          "decile": 1,
+          "max_score": 0.9984061121940613,
+          "min_score": 0.008526998572051525,
+          "positive_rate": 0.048468030107199876,
+          "positives": 1275,
+          "rows": 26306
+        },
+        {
+          "decile": 2,
+          "max_score": 0.008526813238859177,
+          "min_score": 0.0017167339101433754,
+          "positive_rate": 3.8014141260548925e-05,
+          "positives": 1,
+          "rows": 26306
+        },
+        {
+          "decile": 3,
+          "max_score": 0.001716704573482275,
+          "min_score": 0.0004948831629008055,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 26306
+        },
+        {
+          "decile": 4,
+          "max_score": 0.0004948640125803649,
+          "min_score": 0.00017392614972777665,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 26306
+        },
+        {
+          "decile": 5,
+          "max_score": 0.00017392182780895382,
+          "min_score": 7.978614303283393e-05,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 26305
+        },
+        {
+          "decile": 6,
+          "max_score": 7.978294888744131e-05,
+          "min_score": 4.2026247683679685e-05,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 26305
+        },
+        {
+          "decile": 7,
+          "max_score": 4.2025083530461416e-05,
+          "min_score": 2.278993088111747e-05,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 26305
+        },
+        {
+          "decile": 8,
+          "max_score": 2.278960710100364e-05,
+          "min_score": 1.1783902664319612e-05,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 26305
+        },
+        {
+          "decile": 9,
+          "max_score": 1.178365528176073e-05,
+          "min_score": 4.9256782403972466e-06,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 26305
+        },
+        {
+          "decile": 10,
+          "max_score": 4.9241566557611804e-06,
+          "min_score": 6.532578478157802e-09,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 26305
+        }
+      ],
+      "label_rate": 0.0048507150623065985,
+      "positives": 1276,
+      "pr_auc": 0.5057125243007372,
+      "pr_auc_lift": 104.25525263903302,
+      "prevalence": 0.0048507150623065985,
+      "recall_at_fpr_0_1pct": 0.24294670846394983,
+      "recall_at_fpr_1pct": 0.9811912225705329,
+      "roc_auc": 0.9971481884037232,
+      "rows": 263054
+    },
+    "validation": {
+      "amount_weighted_recall_at_decline": 0.35040292703334525,
+      "amount_weighted_recall_at_review": 0.9877733190986955,
+      "brier": 0.007813884742924979,
+      "deciles": [
+        {
+          "decile": 1,
+          "max_score": 0.9984028935432434,
+          "min_score": 0.004656299017369747,
+          "positive_rate": 0.04299961144929413,
+          "positives": 332,
+          "rows": 7721
+        },
+        {
+          "decile": 2,
+          "max_score": 0.0046558501198887825,
+          "min_score": 0.000780198723077774,
+          "positive_rate": 0.00025903380391141046,
+          "positives": 2,
+          "rows": 7721
+        },
+        {
+          "decile": 3,
+          "max_score": 0.0007801942410878837,
+          "min_score": 0.00022262215497903526,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 7721
+        },
+        {
+          "decile": 4,
+          "max_score": 0.0002225828793598339,
+          "min_score": 9.743245755089447e-05,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 7721
+        },
+        {
+          "decile": 5,
+          "max_score": 9.742372640175745e-05,
+          "min_score": 5.2493149269139394e-05,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 7721
+        },
+        {
+          "decile": 6,
+          "max_score": 5.2491297537926584e-05,
+          "min_score": 3.0006707675056532e-05,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 7721
+        },
+        {
+          "decile": 7,
+          "max_score": 3.0002385756233707e-05,
+          "min_score": 1.726404116197955e-05,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 7721
+        },
+        {
+          "decile": 8,
+          "max_score": 1.726302070892416e-05,
+          "min_score": 9.37425829761196e-06,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 7721
+        },
+        {
+          "decile": 9,
+          "max_score": 9.373936336487532e-06,
+          "min_score": 4.08575078836293e-06,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 7721
+        },
+        {
+          "decile": 10,
+          "max_score": 4.085703949385788e-06,
+          "min_score": 4.585551494074025e-09,
+          "positive_rate": 0.0,
+          "positives": 0,
+          "rows": 7721
+        }
+      ],
+      "label_rate": 0.004325864525320554,
+      "positives": 334,
+      "pr_auc": 0.4487508342133994,
+      "pr_auc_lift": 103.73668236412146,
+      "prevalence": 0.004325864525320554,
+      "recall_at_fpr_0_1pct": 0.19461077844311378,
+      "recall_at_fpr_1pct": 0.9550898203592815,
+      "roc_auc": 0.9960613530211029,
+      "rows": 77210
+    }
+  }
+}
