@@ -1,9 +1,10 @@
 # Architecture
 
-> Status: **target architecture**. Phases 1 and 2 are done: both services answer `GET /health`,
-> Postgres and Redis run in Compose, the data contracts and the v1 API contracts exist (the `/v1`
-> routes answer `501`), and the synthetic data generator produces one universe for both services.
-> Everything else below is planned and is tracked in the roadmap in the [README](../README.md).
+> Status: **target architecture**. Phases 1 to 3 are done: the synthetic data generator, the data
+> and API contracts, and a working `risk-scoring-api` (PyTorch model, idempotent decision log in
+> Postgres; see [risk-scoring.md](risk-scoring.md)). The settlement service still answers `501` on
+> its `/v1` routes. Redis is provisioned but unused so far. Everything else below is planned and
+> is tracked in the roadmap in the [README](../README.md).
 
 The repository models the two sides of a payments system with synthetic data:
 
@@ -19,9 +20,9 @@ flowchart LR
     bi["BI tool"]
 
     subgraph online["Online path: risk-scoring-api"]
-        risk["FastAPI<br/>POST /score (planned)"]
+        risk["FastAPI<br/>POST /v1/score"]
         serving["serving<br/>online inference"]
-        training["training<br/>offline, LightGBM + PyTorch"]
+        training["training<br/>offline, PyTorch MLP"]
         risk --> serving
         training -.->|model artifacts| serving
     end
@@ -65,10 +66,12 @@ requirements.
 | Mode | Package | What it does |
 | --- | --- | --- |
 | Online | `risk_scoring.api`, `risk_scoring.serving` | Serves scoring requests with a loaded model. Low latency, always running. |
-| Offline | `risk_scoring.training` | Trains and evaluates models (LightGBM baseline, then PyTorch) on synthetic data and produces model artifacts. Runs on demand. |
+| Offline | `risk_scoring.training` | Trains and evaluates a PyTorch MLP on synthetic data and produces a versioned, hash-verified model artifact. Runs on demand (`make train-risk`). |
 
-Training is offline and serving is online; the model artifact is the hand-off between them. Heavy ML
-dependencies belong to this service only (see [ADR 0001](adr/0001-monorepo-with-uv-workspace.md)).
+Training is offline and serving is online; the model artifact is the hand-off between them, and both
+sides use the same feature pipeline so they cannot drift ([ADR 0007](adr/0007-mlp-with-embeddings-and-one-feature-pipeline.md)).
+Heavy ML dependencies belong to this service only (see [ADR 0001](adr/0001-monorepo-with-uv-workspace.md)).
+Serving keeps an idempotent decision log in Postgres ([ADR 0009](adr/0009-serving-concurrency-idempotent-decision-log-and-ports.md)).
 
 ### settlement-service
 
@@ -95,7 +98,7 @@ side, with a known set of injected reconciliation breaks. See [data-model.md](da
 
 `packages/shared` (`payments_shared`) holds what the services and the generator need: the
 `HealthResponse` and `ProblemDetails` schemas, `configure_logging()`, the data-contract loader and
-validator, and the RFC 7807 helpers. It should stay small; domain logic belongs in the service that owns it.
+validator, and the RFC 7807 helpers (problem `type` values are `urn:problem:<slug>`). It should stay small; domain logic belongs in the service that owns it.
 
 ## Contracts
 

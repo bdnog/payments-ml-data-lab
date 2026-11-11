@@ -38,9 +38,10 @@ data generator to agree on what a feature is.
   committed, so interface changes cannot slip in unnoticed.
 - The source of truth is split: YAML for data, Python models for APIs. The alignment tests are what
   keeps the two sides honest.
-- **Contracts are not packaged into the Docker images yet.** The loader finds `contracts/` by walking
-  up from the installed package or through `$CONTRACTS_DIR`; inside an image built today neither
-  exists. This is fine while the services do not read contracts at runtime. When the settlement service
-  starts validating its marts (phase 4), the contracts must be copied into the image or shipped as
-  package data, and this decision should be revisited.
+- **Contracts are not packaged into the Docker images by default.** The loader finds `contracts/` by
+  walking up from the installed package or through `$CONTRACTS_DIR`; inside an image neither exists
+  unless the Dockerfile copies them. Since phase 3 the risk-scoring image copies `contracts/data` and
+  sets `CONTRACTS_DIR=/app/contracts`, because its feature pipeline reads the `transactions` contract
+  at runtime (ADR 0007). The settlement image still does not; when it starts validating its marts
+  (phase 4) it needs the same, or the contracts should become package data.
 - Rules are SQL expressions evaluated with Polars, so they are tied to Polars' SQL dialect.
