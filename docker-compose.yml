@@ -1,7 +1,7 @@
 # Local development stack. Configuration comes from environment variables
 # (see .env.example); every variable has a default, so `docker compose up` works without a .env.
 #
-#   docker compose up -d --build                       # postgres, redis, both APIs
+#   docker compose up -d --build                       # postgres, redis, migration, both APIs
 #   docker compose run --rm settlement-batch           # one-off batch run (profile "batch")
 #   SETTLEMENT_RUN_DATE=2026-11-10 docker compose run --rm settlement-batch
 
@@ -18,6 +18,9 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      # Creates the risk_scoring and settlement databases on the FIRST start of a volume.
+      # With an existing volume run `docker compose down -v` once (this deletes local data).
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -34,6 +37,18 @@ services:
       timeout: 3s
       retries: 10
 
+  # One-shot: applies the Alembic migrations of the decision log, then exits.
+  risk-migrate:
+    build:
+      context: .
+      dockerfile: services/risk-scoring-api/Dockerfile
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      RISK_DATABASE_URL: &risk-database-url postgresql+psycopg://${POSTGRES_USER:-payments}:${POSTGRES_PASSWORD:-payments}@postgres:5432/risk_scoring
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   risk-scoring-api:
     build:
       context: .
@@ -41,9 +56,25 @@ services:
     environment:
       RISK_APP_VERSION: ${RISK_APP_VERSION:-0.1.0}
       RISK_LOG_LEVEL: ${RISK_LOG_LEVEL:-INFO}
+      RISK_DATABASE_URL: *risk-database-url
+      RISK_TORCH_THREADS: ${RISK_TORCH_THREADS:-1}
+      # Uvicorn workers: inference is CPU-bound, so scale with processes, not threads.
+      WEB_CONCURRENCY: ${RISK_WEB_CONCURRENCY:-1}
     ports:
       - "${RISK_API_PORT:-8001}:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/ready', timeout=2)"
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
     depends_on:
+      risk-migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:

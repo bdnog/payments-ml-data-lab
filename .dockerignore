@@ -14,3 +14,4 @@ data/**/*.parquet
 docs
 scaffold-prompt.md
 **/tests
+services/*/models/runs
