@@ -3,7 +3,8 @@
 #
 #   docker compose up -d --build                       # postgres, redis, migration, both APIs
 #   docker compose run --rm settlement-batch           # one-off batch run (profile "batch")
-#   SETTLEMENT_RUN_DATE=2026-11-10 docker compose run --rm settlement-batch
+#   SETTLEMENT_RUN_DATE=2026-01-20 docker compose run --rm settlement-batch
+#   DATASET_DIR=./data/out/full docker compose up -d   # settle another dataset
 
 name: payments-ml-data-lab
 
@@ -80,6 +81,19 @@ services:
       redis:
         condition: service_healthy
 
+  # One-shot: applies the Alembic migrations of the `runs` table, then exits.
+  settlement-migrate:
+    build:
+      context: .
+      dockerfile: services/settlement-service/Dockerfile
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      SETTLEMENT_DATABASE_URL: &settlement-database-url postgresql+psycopg://${POSTGRES_USER:-payments}:${POSTGRES_PASSWORD:-payments}@postgres:5432/settlement
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Read-mostly API: reads the marts (read-only mount) and registers runs in Postgres.
   settlement-service-api:
     build:
       context: .
@@ -87,27 +101,70 @@ services:
     environment:
       SETTLEMENT_APP_VERSION: ${SETTLEMENT_APP_VERSION:-0.1.0}
       SETTLEMENT_LOG_LEVEL: ${SETTLEMENT_LOG_LEVEL:-INFO}
+      SETTLEMENT_DATABASE_URL: *settlement-database-url
     ports:
       - "${SETTLEMENT_API_PORT:-8002}:8000"
+    volumes:
+      - settlement-marts:/data/marts:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/ready', timeout=2)"
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
     depends_on:
+      settlement-migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
 
-  # Same image as the API, different command. Not started by default.
+  # Same image as the API, different command: executes the runs the API registered. It is the only
+  # writer of the marts volume. SIGTERM lets the current run finish, so give it time to do so.
+  settlement-worker:
+    build:
+      context: .
+      dockerfile: services/settlement-service/Dockerfile
+    command: ["python", "-m", "settlement.batch", "worker"]
+    environment:
+      SETTLEMENT_LOG_LEVEL: ${SETTLEMENT_LOG_LEVEL:-INFO}
+      SETTLEMENT_DATABASE_URL: *settlement-database-url
+      SETTLEMENT_WORKER_POLL_SECONDS: ${SETTLEMENT_WORKER_POLL_SECONDS:-2}
+      SETTLEMENT_STALE_AFTER_SECONDS: ${SETTLEMENT_STALE_AFTER_SECONDS:-900}
+      SETTLEMENT_MAX_ATTEMPTS: ${SETTLEMENT_MAX_ATTEMPTS:-3}
+    volumes:
+      - settlement-marts:/data/marts
+      # The dataset root (reference/ and settlement/), read-only. Default: the committed sample.
+      - ${DATASET_DIR:-./data/samples}:/data/input:ro
+    stop_grace_period: 2m
+    healthcheck:
+      disable: true  # the image's HEALTHCHECK probes the API's /ready; the worker serves no HTTP
+    depends_on:
+      settlement-migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+
+  # Ad-hoc run that bypasses the queue (ops and backfills). Not started by default.
   settlement-batch:
     profiles: ["batch"]
     build:
       context: .
       dockerfile: services/settlement-service/Dockerfile
-    command: ["python", "-m", "settlement.batch", "run", "--date", "${SETTLEMENT_RUN_DATE:-2026-11-10}"]
+    command: ["python", "-m", "settlement.batch", "run", "--date", "${SETTLEMENT_RUN_DATE:-2026-01-15}"]
     environment:
-      SETTLEMENT_APP_VERSION: ${SETTLEMENT_APP_VERSION:-0.1.0}
       SETTLEMENT_LOG_LEVEL: ${SETTLEMENT_LOG_LEVEL:-INFO}
-    depends_on:
-      postgres:
-        condition: service_healthy
+    volumes:
+      - settlement-marts:/data/marts
+      - ${DATASET_DIR:-./data/samples}:/data/input:ro
+    healthcheck:
+      disable: true
 
 volumes:
   postgres-data:
+  settlement-marts:

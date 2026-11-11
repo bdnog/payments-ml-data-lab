@@ -27,6 +27,7 @@ jobs:
           --health-retries 10
     env:
       RISK_TEST_DATABASE_URL: postgresql+psycopg://payments:payments@localhost:5432/risk_scoring_test
+      SETTLEMENT_TEST_DATABASE_URL: postgresql+psycopg://payments:payments@localhost:5432/settlement_test
     steps:
       - uses: actions/checkout@v4
 
@@ -37,6 +38,10 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --all-packages --frozen
+
+      - name: Create the settlement test database
+        # Each service migrates its own database (alembic_version would clash in a shared one).
+        run: PGPASSWORD=payments psql -h localhost -U payments -d risk_scoring_test -c "CREATE DATABASE settlement_test"
 
       - name: Lint
         run: uv run ruff check .
@@ -54,6 +59,11 @@ jobs:
         run: |
           uv run python -m payments_datagen generate --profile sample --out "${{ runner.temp }}/sample"
           uv run python -m payments_datagen validate "${{ runner.temp }}/sample"
+
+      - name: Settle the sample and verify it against the answer key
+        run: |
+          uv run python -m settlement.batch run-range --all --input-dir data/samples --marts-dir "${{ runner.temp }}/marts"
+          uv run python -m settlement.batch verify --input-dir data/samples --marts-dir "${{ runner.temp }}/marts"
 
   docker-build:
     runs-on: ubuntu-latest
