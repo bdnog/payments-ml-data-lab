@@ -58,18 +58,21 @@ def prepare_data(
     label_maturity_days: int = DEFAULT_LABEL_MATURITY_DAYS,
     min_category_count: int = 20,
     label_as_of: datetime | None = None,
+    preprocessor: Preprocessor | None = None,
 ) -> PreparedData:
     """Split, label, fit the preprocessor on train and encode everything.
 
     ``label_as_of`` exists to make the maturity guard testable; leave it unset to use the correct
-    ``train_end + label_maturity_days``.
+    ``train_end + label_maturity_days``. Pass ``preprocessor`` to evaluate an existing model: it is
+    then used as it is instead of being fitted again.
     """
     plan = plan_split(transactions, fractions)
     as_of = label_as_of or training_as_of(plan.train_end, label_maturity_days)
     frames = plan.apply(transactions)
 
-    train_derived = derive_features(feature_frame(frames["train"]))
-    preprocessor = Preprocessor.fit(train_derived, min_category_count=min_category_count)
+    if preprocessor is None:
+        train_derived = derive_features(feature_frame(frames["train"]))
+        preprocessor = Preprocessor.fit(train_derived, min_category_count=min_category_count)
 
     splits: dict[str, SplitData] = {}
     for name, frame in frames.items():
