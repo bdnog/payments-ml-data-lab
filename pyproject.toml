@@ -23,7 +23,7 @@ target-version = "py312"
 select = ["E", "F", "I", "B", "UP", "SIM", "N"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["payments_shared", "risk_scoring", "settlement"]
+known-first-party = ["payments_shared", "payments_datagen", "risk_scoring", "settlement"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -31,6 +31,7 @@ quote-style = "double"
 [tool.pytest.ini_options]
 testpaths = [
     "packages/shared/tests",
+    "packages/datagen/tests",
     "services/risk-scoring-api/tests",
     "services/settlement-service/tests",
 ]
