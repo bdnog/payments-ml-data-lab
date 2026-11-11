@@ -8,7 +8,10 @@ A portfolio monorepo that models the two sides of a payments system with entirel
 model planned), and **`settlement-service`**, a batch settlement and reconciliation pipeline (Polars)
 with a read-mostly API that exposes results to BI. Both live in one uv workspace and share a small
 library, with CI, Docker and Compose working from day one. The project is built in phases (see the
-[roadmap](#roadmap)); right now it is the foundation: every service answers `GET /health`.
+[roadmap](#roadmap)). Today both services answer `GET /health`, their v1 API contracts are defined (the
+`/v1` routes answer `501`), and a deterministic generator produces one synthetic universe for both:
+labeled transactions for the risk side, and a ledger and PSP file with known injected breaks for the
+settlement side.
 
 ## Architecture (target)
 
@@ -67,6 +70,29 @@ curl localhost:8002/health   # settlement-service
 Stop everything with `make down`. Configuration comes from environment variables; copy
 `.env.example` to `.env` to change the defaults (`.env` is never committed).
 
+### Synthetic data
+
+```bash
+make data-sample                                  # refresh the committed sample in data/samples (~250 KB)
+make data-full                                    # about 500k transactions into data/out/full (ignored by git)
+make data-validate DIR=data/out/full              # contracts, foreign keys, cross-dataset invariants
+```
+
+`data-full` takes a couple of seconds. Every run with the same seed gives the same data. The flags
+(`--seed`, `--days`, `--fraud-rate`, `--break-rate`, ...) are listed by
+`uv run python -m payments_datagen generate --help`. What is in the data: [`docs/data-model.md`](docs/data-model.md)
+and [`docs/fraud-patterns.md`](docs/fraud-patterns.md).
+
+### API contracts
+
+```bash
+make contracts          # export the OpenAPI documents to contracts/openapi/
+make contracts-check    # fail if the committed documents differ from the code (runs in CI)
+```
+
+The `/v1` routes of both services are stubs that answer `501`. Browse `/docs` of a running service to
+see the full contract.
+
 ### Running the APIs without Docker
 
 ```bash
@@ -95,14 +121,23 @@ docker run --rm settlement-service python -m settlement.batch run --date 2026-11
 ```
 .
 ├── packages/
-│   └── shared/              # payments-shared: HealthResponse, configure_logging()
+│   ├── shared/              # payments-shared: schemas, logging, data-contract loader and validator
+│   └── datagen/             # payments-datagen: deterministic synthetic data generator (CLI)
 ├── services/
 │   ├── risk-scoring-api/    # online fraud scoring (api, serving, training)
 │   └── settlement-service/  # batch + api around a shared domain (domain, batch, api, storage)
-├── data/                    # synthetic data generators and small samples
-├── contracts/               # OpenAPI exports, data contracts, payload examples
+├── data/
+│   ├── samples/             # committed output of the `sample` profile
+│   └── out/                 # local runs (ignored by git)
+├── contracts/
+│   ├── data/                # YAML data contracts (source of truth)
+│   ├── openapi/             # generated from the apps, checked in CI
+│   └── examples/            # example payloads, validated by tests
+├── scripts/                 # export_openapi.py
 ├── docs/
 │   ├── architecture.md
+│   ├── data-model.md        # ER diagram and notes on keys, units and the due-date cutoff
+│   ├── fraud-patterns.md    # patterns, hard negatives, label delay and bias
 │   └── adr/                 # architecture decision records
 ├── docker-compose.yml
 ├── Makefile
@@ -116,13 +151,17 @@ root because the workspace and the single `uv.lock` are needed.
 
 - [ADR 0001: Monorepo with a uv workspace](docs/adr/0001-monorepo-with-uv-workspace.md)
 - [ADR 0002: settlement-service has `batch` and `api` modules](docs/adr/0002-settlement-service-batch-and-api-modules.md)
+- [ADR 0003: `payments-datagen` as a workspace package, one shared universe](docs/adr/0003-datagen-workspace-package-and-single-universe.md)
+- [ADR 0004: Contract-first, YAML data contracts and generated OpenAPI](docs/adr/0004-contract-first-with-yaml-data-contracts-and-generated-openapi.md)
+- [ADR 0005: Money is an integer in minor units](docs/adr/0005-money-as-integer-minor-units.md)
+- [ADR 0006: v1 scoring takes precomputed behavior features](docs/adr/0006-v1-scoring-takes-precomputed-behavior-features.md)
 
 ## Roadmap
 
 - [x] **Phase 1: Foundation.** Workspace, shared package, both service skeletons with `/health`,
   Dockerfiles, Compose, CI, Makefile, docs.
-- [ ] **Phase 2: Data generators and contracts.** Synthetic transaction generators, Parquet samples,
-  data contracts and exported OpenAPI documents.
+- [x] **Phase 2: Data generators and contracts.** Data contracts, v1 API contracts with exported OpenAPI,
+  a deterministic generator for one shared universe, a committed sample, validation and CI checks.
 - [ ] **Phase 3: risk-scoring-api.** Features, LightGBM baseline, PyTorch model, online scoring endpoint.
 - [ ] **Phase 4: settlement-service.** Domain rules, Polars batch pipeline, Parquet marts, read API for BI.
 - [ ] **Phase 5: Polish.** Observability, performance notes, documentation pass, demo script.

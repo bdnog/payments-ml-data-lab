@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help sync lint format test run-risk run-settlement-api up down build data-sample contracts contracts-check
+.PHONY: help sync lint format test run-risk run-settlement-api up down build data-sample data-full data-validate contracts contracts-check
 
 help: ## List available targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -35,6 +35,12 @@ build: ## Build both service images
 
 data-sample: ## Regenerate the committed sample in data/samples (deterministic, seed 42)
 	uv run python -m payments_datagen generate --profile sample --out data/samples
+
+data-full: ## Generate the full profile (about 500k transactions) into data/out/full
+	uv run python -m payments_datagen generate --profile full --out data/out/full
+
+data-validate: ## Validate a generated directory (DIR=data/samples by default)
+	uv run python -m payments_datagen validate $(or $(DIR),data/samples)
 
 contracts: ## Export the OpenAPI documents to contracts/openapi
 	uv run python scripts/export_openapi.py

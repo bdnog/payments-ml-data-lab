@@ -1,8 +1,9 @@
 # Architecture
 
-> Status: **target architecture**. Phase 1 (foundation) is done: both services answer
-> `GET /health`, and Postgres and Redis run in Compose. Everything else below is planned and is
-> tracked in the roadmap in the [README](../README.md).
+> Status: **target architecture**. Phases 1 and 2 are done: both services answer `GET /health`,
+> Postgres and Redis run in Compose, the data contracts and the v1 API contracts exist (the `/v1`
+> routes answer `501`), and the synthetic data generator produces one universe for both services.
+> Everything else below is planned and is tracked in the roadmap in the [README](../README.md).
 
 The repository models the two sides of a payments system with synthetic data:
 
@@ -13,7 +14,7 @@ The repository models the two sides of a payments system with synthetic data:
 
 ```mermaid
 flowchart LR
-    gen["Synthetic data generators<br/>(data/generators)"]
+    gen["Synthetic data generator<br/>(packages/datagen)"]
     client["Payment client<br/>(checkout / gateway)"]
     bi["BI tool"]
 
@@ -83,10 +84,18 @@ Both modes share `settlement.domain` (pure rules, no Polars/FastAPI/storage impo
 The same Docker image runs both modes: the default command starts the API, and the batch is started
 by overriding the command (`docker compose run --rm settlement-batch`).
 
+## Data and contracts
+
+`packages/datagen` generates one deterministic universe from a seed: transactions with fraud labels for
+the risk side, and the ledger and PSP file derived from those same transactions for the settlement
+side, with a known set of injected reconciliation breaks. See [data-model.md](data-model.md) and
+[fraud-patterns.md](fraud-patterns.md).
+
 ## Shared code
 
-`packages/shared` (`payments_shared`) holds what both services need: the `HealthResponse` schema and
-`configure_logging()`. It should stay small; domain logic belongs in the service that owns it.
+`packages/shared` (`payments_shared`) holds what the services and the generator need: the
+`HealthResponse` and `ProblemDetails` schemas, `configure_logging()`, the data-contract loader and
+validator, and the RFC 7807 helpers. It should stay small; domain logic belongs in the service that owns it.
 
 ## Contracts
 
