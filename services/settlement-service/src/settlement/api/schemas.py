@@ -12,6 +12,10 @@ from typing import Self
 
 from pydantic import AwareDatetime, BaseModel, Field, model_validator
 
+from settlement.domain import BreakType, Currency, RunStatus
+
+__all__ = ["BreakType", "Currency", "RunStatus"]  # re-exported: the domain owns the vocabulary
+
 MERCHANT_ID = r"^mer_[0-9a-f]{6}$"
 PAYMENT_ID = r"^pay_[0-9a-f]{12}$"
 PSP_RECORD_ID = r"^psp_[0-9a-f]{12}$"
@@ -22,32 +26,12 @@ DEFAULT_PAGE_SIZE = 100
 MAX_PAGE_SIZE = 1_000
 
 
-class Currency(StrEnum):
-    BRL = "BRL"
-
-
-class BreakType(StrEnum):
-    AMOUNT_MISMATCH = "AMOUNT_MISMATCH"
-    MISSING_IN_PSP = "MISSING_IN_PSP"
-    MISSING_IN_LEDGER = "MISSING_IN_LEDGER"
-    DUPLICATE_IN_PSP = "DUPLICATE_IN_PSP"
-    FEE_MISMATCH = "FEE_MISMATCH"
-    CHARGEBACK_NOT_IN_LEDGER = "CHARGEBACK_NOT_IN_LEDGER"
-
-
 class Mart(StrEnum):
     """The marts the batch produces. Values are the names of their data contracts."""
 
     DAILY_SETTLEMENT_BY_MERCHANT = "daily_settlement_by_merchant"
     RECONCILIATION_BREAKS = "reconciliation_breaks"
     FEE_SUMMARY = "fee_summary"
-
-
-class RunStatus(StrEnum):
-    PENDING = "PENDING"
-    RUNNING = "RUNNING"
-    DONE = "DONE"
-    FAILED = "FAILED"
 
 
 class DailySettlement(BaseModel):

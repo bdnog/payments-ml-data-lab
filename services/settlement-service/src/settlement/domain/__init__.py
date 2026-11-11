@@ -1,5 +1,22 @@
-"""Pure settlement and reconciliation rules.
+"""Pure settlement domain: enums, fee and settlement-date rules, run lifecycle."""
 
-Rule: no imports from Polars, FastAPI or storage in this package. Both the ``batch`` and ``api``
-modules depend on ``domain``; ``domain`` depends on neither of them.
-"""
+from settlement.domain.enums import BreakType, Currency, RecordType, RunStatus
+from settlement.domain.rules import (
+    CHARGEBACK_FEE_MINOR,
+    CURRENCY,
+    EVENT_SETTLEMENT_DAYS,
+    expected_fee_minor,
+    settlement_date,
+)
+
+__all__ = [
+    "CHARGEBACK_FEE_MINOR",
+    "CURRENCY",
+    "EVENT_SETTLEMENT_DAYS",
+    "BreakType",
+    "Currency",
+    "RecordType",
+    "RunStatus",
+    "expected_fee_minor",
+    "settlement_date",
+]
