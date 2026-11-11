@@ -19,6 +19,13 @@ STREAMS = {
     "settlement": 9,
     "breaks": 10,
     "shape": 11,
+    "normalize": 12,
+    "txn_ids": 13,
+    "pay_ids": 14,
+    "ref_ids": 15,
+    "cbk_ids": 16,
+    "psp_ids": 17,
+    "brk_ids": 18,
 }
 
 
