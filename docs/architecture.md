@@ -1,10 +1,11 @@
 # Architecture
 
-> Status: **target architecture**. Phases 1 to 3 are done: the synthetic data generator, the data
-> and API contracts, and a working `risk-scoring-api` (PyTorch model, idempotent decision log in
-> Postgres; see [risk-scoring.md](risk-scoring.md)). The settlement service still answers `501` on
-> its `/v1` routes. Redis is provisioned but unused so far. Everything else below is planned and
-> is tracked in the roadmap in the [README](../README.md).
+> Status: Phases 1 to 4 are done: the synthetic data generator, the data and API contracts, a working
+> `risk-scoring-api` (PyTorch model, idempotent decision log in Postgres; see
+> [risk-scoring.md](risk-scoring.md)) and a working `settlement-service` (reconciliation pipeline,
+> Parquet marts, a Postgres-backed run queue with a worker, and a read API; see
+> [settlement.md](settlement.md)). Redis is provisioned but unused so far. What remains is tracked in
+> the roadmap in the [README](../README.md).
 
 The repository models the two sides of a payments system with synthetic data:
 

@@ -42,6 +42,6 @@ data generator to agree on what a feature is.
   walking up from the installed package or through `$CONTRACTS_DIR`; inside an image neither exists
   unless the Dockerfile copies them. Since phase 3 the risk-scoring image copies `contracts/data` and
   sets `CONTRACTS_DIR=/app/contracts`, because its feature pipeline reads the `transactions` contract
-  at runtime (ADR 0007). The settlement image still does not; when it starts validating its marts
-  (phase 4) it needs the same, or the contracts should become package data.
+  at runtime (ADR 0007), and so does the settlement image since phase 4, which validates its inputs
+  and marts against them. Packaging the contracts as package data would remove the copy.
 - Rules are SQL expressions evaluated with Polars, so they are tied to Polars' SQL dialect.

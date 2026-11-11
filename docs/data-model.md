@@ -71,8 +71,8 @@ erDiagram
 ```
 
 The three **marts** (`daily_settlement_by_merchant`, `reconciliation_breaks`, `fee_summary`) are
-produced by the settlement batch in phase 4. Only their contracts exist today. They are derived from
-`psp_settlement` and the ledger, and are not shown above.
+produced by the settlement batch (phase 4) and are not shown above; they are described in the section
+"Marts" below.
 
 ## Datasets
 
@@ -166,6 +166,19 @@ resolves; one payment per transaction; rows are sorted; FRAUD chargebacks and
 visible in the data with the stated difference; every due, captured payment without a PSP sale has a
 `MISSING_IN_PSP` break; and nothing else differs between ledger and PSP file (no *unexplained*
 discrepancy). It also checks that the same seed gives equal data and another seed does not.
+
+## Marts
+
+Outputs of the settlement batch, not generated data. Hive-partitioned Parquet,
+`<marts_dir>/<mart>/settlement_date=YYYY-MM-DD/part-0.parquet`, one partition per settlement date
+and mart (an empty file when a date has nothing to report). Full semantics in
+[settlement.md](settlement.md); how to query them in [bi-access.md](bi-access.md).
+
+| Mart | Grain | Primary key | Meaning |
+| --- | --- | --- | --- |
+| `daily_settlement_by_merchant` | settlement date, merchant, currency | `settlement_date, merchant_id, currency` | the ledger-expected payout (`net = gross - fee - refunds - chargebacks`, may be negative) |
+| `fee_summary` | settlement date, merchant, currency | `settlement_date, merchant_id, currency` | expected vs actual fee over SALEs matched with equal gross |
+| `reconciliation_breaks` | one per discrepancy | `break_id` | what differs between ledger and PSP file; `diff_minor` is PSP minus ledger |
 
 ## Regenerating
 

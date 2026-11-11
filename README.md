@@ -9,8 +9,9 @@ idempotent decision log in Postgres), and **`settlement-service`**, a batch sett
 reconciliation pipeline (Polars) with a read-mostly API that exposes results to BI. Both live in one
 uv workspace and share a small library, with CI, Docker and Compose working from day one. The project
 is built in phases (see the [roadmap](#roadmap)). Today the risk-scoring service works end to end
-(features, training, evaluation, serving, decision log); the settlement service still answers `501`
-on its `/v1` routes; and a deterministic generator produces one synthetic universe for both: labeled
+(features, training, evaluation, serving, decision log), and so does the settlement service (a Polars
+reconciliation pipeline verified against the generator's answer key, Hive-partitioned Parquet marts, a
+Postgres-backed run queue with a worker, and a read API for BI); and a deterministic generator produces one synthetic universe for both: labeled
 transactions for the risk side, and a ledger and PSP file with known injected breaks for the
 settlement side.
 
@@ -58,7 +59,7 @@ Python 3.12 (pinned in `.python-version`) if you do not have it.
 make sync     # install all workspace packages and dev tools
 make test     # run the tests of every member
 make lint     # ruff check + format check
-make up       # build and start postgres, redis, the migration and both APIs
+make up       # build and start postgres, redis, the migrations, both APIs and the settlement worker
 ```
 
 An existing Postgres volume from before Phase 3 needs a one-time `docker compose down -v`, so the
@@ -129,8 +130,8 @@ make contracts          # export the OpenAPI documents to contracts/openapi/
 make contracts-check    # fail if the committed documents differ from the code (runs in CI)
 ```
 
-The `/v1` routes of `risk-scoring-api` are implemented; those of `settlement-service` are stubs that
-answer `501`. Browse `/docs` of a running service to see the full contract.
+The `/v1` routes of both services are implemented. Browse `/docs` of a running service to see the
+full contract.
 
 ### Running the APIs without Docker
 
@@ -140,21 +141,47 @@ make run-risk             # http://localhost:8001 (needs Postgres: `docker compo
 make run-settlement-api   # http://localhost:8002
 ```
 
-### Running the settlement batch
-
-The batch is a stub for now: it validates the date, logs the request and exits 0.
+### Settlement: reconcile, verify, serve
 
 ```bash
-# locally
-uv run python -m settlement.batch run --date 2026-11-10
-
-# with Compose (profile "batch": not started by `make up`)
-SETTLEMENT_RUN_DATE=2026-11-10 docker compose run --rm settlement-batch
-
-# with the image directly: same image as the API, different command
-docker build -f services/settlement-service/Dockerfile -t settlement-service .
-docker run --rm settlement-service python -m settlement.batch run --date 2026-11-10
+make settle-all DATA=data/out/full      # reconcile every date of the PSP file in one pass (about 3 s)
+make verify-settlement DATA=data/out/full  # compare with the generator's answer key: 100% or non-zero exit
+make bench-settlement                   # one date vs the whole range, and the size of the marts
+make up && make demo-settlement DATE=2026-01-20   # POST a run, a worker executes it, page, export, replay
+make settle-run DATE=2026-01-15         # ops path: one date, bypassing the queue (DATA=, MARTS=)
 ```
+
+The marts land in `data/marts/` (ignored by git) as Hive-partitioned Parquet, so DuckDB or any BI tool
+can query them directly: see [`docs/bi-access.md`](docs/bi-access.md). Rules, break taxonomy, mart
+semantics, the run lifecycle and the verification are in [`docs/settlement.md`](docs/settlement.md).
+With Compose the worker settles the dataset mounted from `DATASET_DIR` (default `./data/samples`):
+
+```bash
+DATASET_DIR=./data/out/full docker compose up -d      # the worker now reads the full dataset
+docker compose run --rm settlement-batch              # ad-hoc run that bypasses the queue
+```
+
+**Results** on the `full` dataset (seed 42, 499,666 transactions, 180 days). The reconciliation of every
+break type matches the generator's answer key exactly:
+
+| Break type | Injected | Found | Precision | Recall |
+| --- | --- | --- | --- | --- |
+| `AMOUNT_MISMATCH` | 2,228 | 2,228 | 100% | 100% |
+| `MISSING_IN_PSP` | 1,753 | 1,753 | 100% | 100% |
+| `MISSING_IN_LEDGER` | 1,425 | 1,425 | 100% | 100% |
+| `DUPLICATE_IN_PSP` | 1,395 | 1,395 | 100% | 100% |
+| `FEE_MISMATCH` | 1,357 | 1,357 | 100% | 100% |
+| `CHARGEBACK_NOT_IN_LEDGER` | 914 | 914 | 100% | 100% |
+
+| Performance | |
+| --- | --- |
+| one date (with input validation) | 0.18 s |
+| all 180 dates, one pass, with validation | 2.9 s |
+| rows: daily settlement / fee summary / breaks | 34,057 / 33,762 / 9,072 |
+| marts on disk (540 partitions) | 2.9 MiB |
+| total expected payout | R$ 106,043,163.63 (10,604,316,363 centavos) |
+
+These numbers come from a laptop CPU and *synthetic* data.
 
 ## Repository layout
 
@@ -166,7 +193,7 @@ docker run --rm settlement-service python -m settlement.batch run --date 2026-11
 ├── services/
 │   ├── risk-scoring-api/    # online fraud scoring (api, serving, training, persistence, migrations,
 │   │                        #   models/current = the promoted model artifact)
-│   └── settlement-service/  # batch + api around a shared domain (domain, batch, api, storage)
+│   └── settlement-service/  # domain, batch (pipeline, worker, verification), storage, persistence, api
 ├── data/
 │   ├── samples/             # committed output of the `sample` profile
 │   └── out/                 # local runs (ignored by git)
@@ -175,12 +202,15 @@ docker run --rm settlement-service python -m settlement.batch run --date 2026-11
 │   ├── openapi/             # generated from the apps, checked in CI
 │   └── examples/            # example payloads, validated by tests
 ├── docker/postgres/init/    # creates the risk_scoring and settlement databases
-├── scripts/                 # export_openapi.py, score_sample.py, bench_risk.py
+├── scripts/                 # export_openapi.py, score_sample.py, bench_risk.py, demo_settlement.py,
+│                            #   bench_settlement.py
 ├── docs/
 │   ├── architecture.md
 │   ├── data-model.md        # ER diagram and notes on keys, units and the due-date cutoff
 │   ├── fraud-patterns.md    # patterns, hard negatives, label delay and bias
 │   ├── risk-scoring.md      # the online path, skew, idempotency, bands, failure behavior
+│   ├── settlement.md        # rules, reconciliation taxonomy, marts, run lifecycle, verification
+│   ├── bi-access.md         # querying the marts with DuckDB (the queries are tested)
 │   ├── model-card.md        # intended use, data, metrics, limitations, ethics
 │   └── adr/                 # architecture decision records
 ├── docker-compose.yml
@@ -202,6 +232,9 @@ root because the workspace and the single `uv.lock` are needed.
 - [ADR 0007: An MLP with embeddings, one feature pipeline, no baseline yet](docs/adr/0007-mlp-with-embeddings-and-one-feature-pipeline.md)
 - [ADR 0008: Label maturity, temporal split and selection bias](docs/adr/0008-label-maturity-temporal-split-and-selection-bias.md)
 - [ADR 0009: Serving concurrency, idempotent decision log, ports and adapters](docs/adr/0009-serving-concurrency-idempotent-decision-log-and-ports.md)
+- [ADR 0010: Reconciliation algorithm, taxonomy and ground truth kept apart](docs/adr/0010-reconciliation-algorithm-taxonomy-and-ground-truth.md)
+- [ADR 0011: Hive-partitioned Parquet marts, atomic overwrite, empty partitions, exports](docs/adr/0011-hive-partitioned-parquet-marts-atomic-overwrite-and-exports.md)
+- [ADR 0012: DB-backed queue with SKIP LOCKED, API/worker split, idempotent pipeline](docs/adr/0012-db-backed-queue-skip-locked-and-idempotent-pipeline.md)
 
 ## Roadmap
 
@@ -212,7 +245,9 @@ root because the workspace and the single `uv.lock` are needed.
 - [x] **Phase 3: risk-scoring-api.** Shared feature pipeline, label maturity and temporal splits, a
   PyTorch MLP with embeddings, evaluation report and model card, online scoring with an idempotent
   decision log (Postgres, Alembic). No baseline model yet: a gradient-boosting baseline is a planned extension.
-- [ ] **Phase 4: settlement-service.** Domain rules, Polars batch pipeline, Parquet marts, read API for BI.
+- [x] **Phase 4: settlement-service.** Domain rules, Polars reconciliation verified against the
+  generator's ground truth, Hive-partitioned Parquet marts, a DB-backed run queue with a worker, a read
+  API for BI.
 - [ ] **Phase 5: Polish.** Observability, performance notes, documentation pass, demo script.
 
 ## License

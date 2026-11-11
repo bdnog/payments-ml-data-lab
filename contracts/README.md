@@ -44,7 +44,8 @@ lets code derive the feature list (`role: feature`) instead of hardcoding it.
 
 The OpenAPI document of each service, **generated from the apps** by `scripts/export_openapi.py`
 (`make contracts`). Never edit them by hand. Each service declares its models in `api/schemas.py` and
-its routes in `api/routes.py`; routes not implemented yet answer `501` as `application/problem+json`.
+its routes in `api/routes.py`; errors, including `501` for a route that is in a contract but not built yet, are
+`application/problem+json`.
 
 CI runs `make contracts-check`: it regenerates the files and fails if they differ from what is
 committed (or if a generated file is not committed). Change a model, run `make contracts`, commit the diff.
