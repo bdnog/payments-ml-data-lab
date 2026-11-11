@@ -22,8 +22,11 @@ class ProblemDetails(BaseModel):
 
     type: str = Field(
         default="about:blank",
-        description="URI that identifies the kind of problem; 'about:blank' means 'see status'.",
-        examples=["https://payments-ml-data-lab.example/problems/not-implemented"],
+        description=(
+            "URI that identifies the kind of problem, always `urn:problem:<slug>` here; "
+            "'about:blank' means 'see status'."
+        ),
+        examples=["urn:problem:validation-error"],
     )
     title: str = Field(description="Short, human-readable summary.", examples=["Not Implemented"])
     status: int = Field(ge=100, le=599, description="HTTP status code.", examples=[501])

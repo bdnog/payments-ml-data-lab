@@ -1,15 +1,12 @@
-import json
 from typing import Any, get_args, get_origin
 
 import polars as pl
 import pytest
-from fastapi.testclient import TestClient
 from pydantic import BaseModel, ValidationError
 
 from payments_shared.data_contracts import Role, load_contract
 from payments_shared.paths import contracts_dir, repo_root
 from payments_shared.schemas import ProblemDetails
-from risk_scoring.api.main import create_app
 from risk_scoring.api.schemas import (
     FEATURE_PATHS,
     IDENTITY_PATHS,
@@ -22,21 +19,10 @@ from risk_scoring.api.schemas import (
     ScoreRequest,
     ScoreResponse,
 )
-from risk_scoring.config import Settings
 from risk_scoring.dataset_mapping import iter_requests, row_to_request
 
 EXAMPLES = contracts_dir() / "examples" / "risk-scoring"
 SAMPLE_TRANSACTIONS = repo_root() / "data" / "samples" / "risk" / "transactions.parquet"
-
-
-@pytest.fixture(scope="module")
-def client():
-    return TestClient(create_app(Settings(app_version="1.0.0")))
-
-
-@pytest.fixture(scope="module")
-def request_example() -> dict[str, Any]:
-    return json.loads((EXAMPLES / "score.request.json").read_text())
 
 
 def assert_problem(response, status: int) -> dict[str, Any]:
@@ -61,48 +47,6 @@ def test_response_example_validates_and_matches_the_request_example(request_exam
 
 def test_problem_example_validates():
     ProblemDetails.model_validate_json((EXAMPLES / "problem.json").read_text())
-
-
-# --- stub routes ------------------------------------------------------------------------------
-
-
-def test_health_still_works(client):
-    assert client.get("/health").json() == {
-        "status": "ok",
-        "service": "risk-scoring-api",
-        "version": "1.0.0",
-    }
-
-
-def test_score_is_a_501_problem(client, request_example):
-    body = assert_problem(client.post("/v1/score", json=request_example), 501)
-    assert body["instance"] == "/v1/score"
-
-
-def test_score_batch_is_a_501_problem(client, request_example):
-    response = client.post("/v1/score:batch", json={"items": [request_example]})
-    assert_problem(response, 501)
-
-
-def test_model_is_a_501_problem(client):
-    assert_problem(client.get("/v1/model"), 501)
-
-
-def test_invalid_body_is_a_422_problem_that_names_the_field(client, request_example):
-    request_example = {**request_example, "amount_minor": 0}
-    body = assert_problem(client.post("/v1/score", json=request_example), 422)
-    assert any("amount_minor" in error["loc"] for error in body["errors"])
-
-
-@pytest.mark.parametrize("size", [0, 101])
-def test_batch_size_is_limited_to_1_to_100(client, request_example, size):
-    response = client.post("/v1/score:batch", json={"items": [request_example] * size})
-    assert_problem(response, 422)
-
-
-def test_batch_of_exactly_100_is_accepted_by_the_contract(client, request_example):
-    response = client.post("/v1/score:batch", json={"items": [request_example] * 100})
-    assert_problem(response, 501)
 
 
 # --- model rules ------------------------------------------------------------------------------
@@ -262,17 +206,38 @@ def test_the_request_carries_the_values_of_the_row_unchanged():
 
 def test_openapi_describes_every_route_and_documents_problems(client):
     schema = client.get("/openapi.json").json()
-    assert set(schema["paths"]) == {"/health", "/v1/score", "/v1/score:batch", "/v1/model"}
+    assert set(schema["paths"]) == {
+        "/health",
+        "/ready",
+        "/v1/score",
+        "/v1/score:batch",
+        "/v1/model",
+    }
 
     score = schema["paths"]["/v1/score"]["post"]
-    assert {"200", "409", "422", "501"} <= set(score["responses"])
+    assert {"200", "409", "422", "503"} <= set(score["responses"])
+    assert "501" not in score["responses"]
     assert "Idempotent by `transaction_id`" in score["description"]
-    for status in ("409", "422", "501"):
+    assert "not a calibrated probability" in score["description"]
+    for status in ("409", "422", "503"):
         content = score["responses"][status]["content"]
         assert list(content) == ["application/problem+json"]
         assert content["application/problem+json"]["schema"]["$ref"].endswith("/ProblemDetails")
 
+    ready = schema["paths"]["/ready"]["get"]["responses"]
+    assert set(ready) == {"200", "503"}
+    assert list(ready["503"]["content"]) == ["application/problem+json"]
+
     schemas = schema["components"]["schemas"]
     assert set(schemas["ReasonCode"]["enum"]) == {c.value for c in ReasonCode}
     assert schemas["ScoreRequest"]["properties"]["amount_minor"]["exclusiveMinimum"] == 0
-    assert schemas["BatchScoreRequest"]["properties"]["items"]["maxItems"] == 100
+    assert "Not a calibrated" in schemas["ScoreResponse"]["properties"]["score"]["description"]
+
+
+def test_openapi_still_documents_the_batch_items_as_plain_score_requests(client):
+    """The lenient runtime validation must not change what the contract says."""
+    items = client.get("/openapi.json").json()["components"]["schemas"]["BatchScoreRequest"][
+        "properties"
+    ]["items"]
+    assert items["maxItems"] == 100 and items["minItems"] == 1
+    assert items["items"]["$ref"].endswith("/ScoreRequest")

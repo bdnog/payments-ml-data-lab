@@ -335,11 +335,11 @@
             "additionalProperties": {
               "type": "number"
             },
-            "description": "Free-form numeric evaluation metrics.",
+            "description": "Numeric evaluation metrics of the artifact, flattened as `<split>.<metric>` (for example `test.pr_auc`). Measured on synthetic data.",
             "examples": [
               {
-                "pr_auc": 0.41,
-                "recall_at_1pct_fpr": 0.62
+                "test.pr_auc": 0.46,
+                "test.recall_at_fpr_1pct": 0.95
               }
             ],
             "title": "Metrics",
@@ -347,7 +347,7 @@
           },
           "model_version": {
             "examples": [
-              "lgbm-baseline-0.1.0"
+              "mlp-2026.11.1"
             ],
             "title": "Model Version",
             "type": "string"
@@ -442,9 +442,9 @@
           },
           "type": {
             "default": "about:blank",
-            "description": "URI that identifies the kind of problem; 'about:blank' means 'see status'.",
+            "description": "URI that identifies the kind of problem, always `urn:problem:<slug>` here; 'about:blank' means 'see status'.",
             "examples": [
-              "https://payments-ml-data-lab.example/problems/not-implemented"
+              "urn:problem:validation-error"
             ],
             "title": "Type",
             "type": "string"
@@ -455,6 +455,31 @@
           "status"
         ],
         "title": "ProblemDetails",
+        "type": "object"
+      },
+      "ReadyResponse": {
+        "description": "``GET /ready``: the model and its thresholds are loaded and the service can score.",
+        "properties": {
+          "model_version": {
+            "examples": [
+              "mlp-2026.11.1"
+            ],
+            "title": "Model Version",
+            "type": "string"
+          },
+          "status": {
+            "examples": [
+              "ready"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "model_version"
+        ],
+        "title": "ReadyResponse",
         "type": "object"
       },
       "ReasonCode": {
@@ -563,7 +588,7 @@
             ]
           },
           "latency_ms": {
-            "description": "Server-side scoring time.",
+            "description": "Server-side time to compute the features and run the model, in milliseconds. Excludes parsing, validation and the decision log. Stored with the decision, so a replay returns the original value. In a batch: the batch time divided by its size.",
             "examples": [
               4.2
             ],
@@ -573,13 +598,13 @@
           },
           "model_version": {
             "examples": [
-              "lgbm-baseline-0.1.0"
+              "mlp-2026.11.1"
             ],
             "title": "Model Version",
             "type": "string"
           },
           "reason_codes": {
-            "description": "Why the score is high. Empty for clearly legitimate transactions.",
+            "description": "Heuristic reasons why the score is high (rules over the request, not attributions of the model), at most 5, strongest first. Empty for approved transactions.",
             "examples": [
               [
                 "NEW_DEVICE",
@@ -594,7 +619,7 @@
             "type": "array"
           },
           "score": {
-            "description": "Fraud probability-like score.",
+            "description": "Ranking score in [0, 1]: higher means more likely fraud. **Not a calibrated probability** (the model is trained with a weighted loss); compare it with the thresholds of `GET /v1/model`, do not read it as a percentage.",
             "examples": [
               0.93
             ],
@@ -656,7 +681,7 @@
     }
   },
   "info": {
-    "description": "Online fraud scoring. **v1 contract**: the caller sends the transaction together with its\nprecomputed `behavior` features. Only `/health` is implemented; the `/v1` routes answer `501`.\n",
+    "description": "Online fraud scoring with a small neural network (PyTorch MLP with embeddings), trained on\n**synthetic** data: the metrics say nothing about real fraud. The caller sends the transaction with\nits precomputed `behavior` features (v1 contract, ADR 0006); every decision is logged idempotently.\n\n`score` is a ranking score, not a calibrated probability. Reason codes are heuristic explanations.\n",
     "title": "risk-scoring-api",
     "version": "1.0.0"
   },
@@ -664,6 +689,7 @@
   "paths": {
     "/health": {
       "get": {
+        "description": "Liveness only: the process is up. It says nothing about the model or the database.",
         "operationId": "health_health_get",
         "responses": {
           "200": {
@@ -683,6 +709,38 @@
         ]
       }
     },
+    "/ready": {
+      "get": {
+        "description": "Readiness: `200` when the model and its thresholds are loaded, else `503`.",
+        "operationId": "ready",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Service unavailable"
+          }
+        },
+        "summary": "Ready",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
     "/v1/model": {
       "get": {
         "operationId": "get_model",
@@ -697,7 +755,7 @@
             },
             "description": "Successful Response"
           },
-          "501": {
+          "503": {
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -705,7 +763,7 @@
                 }
               }
             },
-            "description": "Not implemented"
+            "description": "Service unavailable"
           }
         },
         "summary": "Describe the model in production",
@@ -716,7 +774,7 @@
     },
     "/v1/score": {
       "post": {
-        "description": "Score one transaction.\n\nThe caller sends the transaction plus its `behavior` block (velocity features computed\npoint-in-time: only past data, the current transaction excluded).\n\n**Idempotent by `transaction_id`.** Sending the same payload again returns the same decision.\nSending the same `transaction_id` with a *different* payload returns `409`.\n\nValidation errors return `422`. All errors are `application/problem+json`.",
+        "description": "Score one transaction.\n\nThe caller sends the transaction plus its `behavior` block (velocity features computed\npoint-in-time: only past data, the current transaction excluded).\n\n`score` is a **ranking score in [0, 1], not a calibrated probability**: use `decision`, which comes\nfrom thresholds chosen on validation data (see `GET /v1/model`). `reason_codes` are heuristic\nexplanations, not attributions of the model.\n\n**Idempotent by `transaction_id`.** Sending the same payload again returns the same decision (the\nstored one, including its original `latency_ms` and `model_version`). Sending the same\n`transaction_id` with a *different* payload returns `409`.\n\nValidation errors return `422`. If the model is not loaded or the decision log is down the answer\nis `503`. All errors are `application/problem+json`.",
         "operationId": "score",
         "requestBody": {
           "content": {
@@ -759,7 +817,7 @@
             },
             "description": "Validation error"
           },
-          "501": {
+          "503": {
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -767,7 +825,7 @@
                 }
               }
             },
-            "description": "Not implemented"
+            "description": "Service unavailable"
           }
         },
         "summary": "Score one transaction",
@@ -778,7 +836,7 @@
     },
     "/v1/score:batch": {
       "post": {
-        "description": "Each item is scored independently and gets either a result or an error, in request order. A bad item does not fail the batch. The same idempotency rule as `/v1/score` applies.",
+        "description": "Each item is scored independently and gets either a result or an error, in request order. A bad item does not fail the batch: an item that fails validation (but has a valid `transaction_id`) or conflicts with an earlier payload gets a per-item `error`. The same idempotency rule as `/v1/score` applies per item. The items are scored in one batched forward pass, so `latency_ms` of each result is the batch time divided by its size.",
         "operationId": "score_batch",
         "requestBody": {
           "content": {
@@ -811,7 +869,7 @@
             },
             "description": "Validation error"
           },
-          "501": {
+          "503": {
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -819,7 +877,7 @@
                 }
               }
             },
-            "description": "Not implemented"
+            "description": "Service unavailable"
           }
         },
         "summary": "Score up to 100 transactions",

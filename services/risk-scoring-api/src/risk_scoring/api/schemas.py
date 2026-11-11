@@ -7,10 +7,18 @@ computed; computing it server-side from history is a v2 concern (ADR 0006).
 the two ever drift apart.
 """
 
+import re
 from enum import StrEnum
-from typing import Self
+from typing import Annotated, Any, Self
 
-from pydantic import AwareDatetime, BaseModel, Field, model_validator
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    Field,
+    ValidationError,
+    WrapValidator,
+    model_validator,
+)
 
 from payments_shared.schemas import ProblemDetails
 
@@ -143,21 +151,87 @@ class ScoreRequest(BaseModel):
 
 class ScoreResponse(BaseModel):
     transaction_id: str = Field(pattern=TRANSACTION_ID, examples=["txn_0a1b2c3d4e5f"])
-    score: float = Field(ge=0, le=1, description="Fraud probability-like score.", examples=[0.93])
+    score: float = Field(
+        ge=0,
+        le=1,
+        description=(
+            "Ranking score in [0, 1]: higher means more likely fraud. **Not a calibrated "
+            "probability** (the model is trained with a weighted loss); compare it with the "
+            "thresholds of `GET /v1/model`, do not read it as a percentage."
+        ),
+        examples=[0.93],
+    )
     decision: Decision = Field(examples=["DECLINE"])
-    model_version: str = Field(examples=["lgbm-baseline-0.1.0"])
+    model_version: str = Field(examples=["mlp-2026.11.1"])
     reason_codes: list[ReasonCode] = Field(
-        description="Why the score is high. Empty for clearly legitimate transactions.",
+        description=(
+            "Heuristic reasons why the score is high (rules over the request, not attributions "
+            "of the model), at most 5, strongest first. Empty for approved transactions."
+        ),
         examples=[["NEW_DEVICE", "PROXY_DETECTED", "AMOUNT_ABOVE_NORMAL"]],
     )
-    latency_ms: float = Field(ge=0, description="Server-side scoring time.", examples=[4.2])
+    latency_ms: float = Field(
+        ge=0,
+        description=(
+            "Server-side time to compute the features and run the model, in milliseconds. "
+            "Excludes parsing, validation and the decision log. Stored with the decision, so a "
+            "replay returns the original value. In a batch: the batch time divided by its size."
+        ),
+        examples=[4.2],
+    )
 
 
 MAX_BATCH_SIZE = 100
 
 
+class RejectedItem(BaseModel):
+    """A batch item that failed validation but can be identified: it gets a per-item error."""
+
+    transaction_id: str
+    errors: list[dict[str, Any]]
+
+
+def _validate_items_leniently(value: Any, handler: Any) -> list[ScoreRequest | RejectedItem]:
+    """Validate each item on its own, so one bad item does not fail the batch (the v1 contract).
+
+    A wrap validator replaces the default all-or-nothing validation of the list; the JSON schema
+    still comes from the annotation, so OpenAPI documents plain ``ScoreRequest`` items. An item
+    without a usable ``transaction_id`` cannot be answered per item (the response has to name it),
+    so that one still fails the whole request.
+    """
+    if not isinstance(value, list) or not 1 <= len(value) <= MAX_BATCH_SIZE:
+        raise ValueError(f"items must be a list of 1 to {MAX_BATCH_SIZE} transactions")
+    parsed: list[ScoreRequest | RejectedItem] = []
+    for position, raw in enumerate(value):
+        try:
+            parsed.append(ScoreRequest.model_validate(raw))
+        except ValidationError as exc:
+            transaction_id = raw.get("transaction_id") if isinstance(raw, dict) else None
+            if not (
+                isinstance(transaction_id, str) and re.fullmatch(TRANSACTION_ID, transaction_id)
+            ):
+                raise ValueError(
+                    f"item {position} has no valid transaction_id: it cannot be reported on its own"
+                ) from exc
+            errors = [
+                {"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]} for e in exc.errors()
+            ]
+            parsed.append(RejectedItem(transaction_id=transaction_id, errors=errors))
+    return parsed
+
+
 class BatchScoreRequest(BaseModel):
-    items: list[ScoreRequest] = Field(min_length=1, max_length=MAX_BATCH_SIZE)
+    # Declared as list[ScoreRequest] for the contract; at runtime an item that failed validation
+    # is a RejectedItem (see _validate_items_leniently). Use ``entries`` for the honest type.
+    items: Annotated[
+        list[ScoreRequest],
+        WrapValidator(_validate_items_leniently),
+        Field(min_length=1, max_length=MAX_BATCH_SIZE),
+    ]
+
+    @property
+    def entries(self) -> list[ScoreRequest | RejectedItem]:
+        return self.items  # type: ignore[return-value]
 
 
 class BatchScoreItemResult(BaseModel):
@@ -195,13 +269,23 @@ class Thresholds(BaseModel):
         return self
 
 
+class ReadyResponse(BaseModel):
+    """``GET /ready``: the model and its thresholds are loaded and the service can score."""
+
+    status: str = Field(examples=["ready"])
+    model_version: str = Field(examples=["mlp-2026.11.1"])
+
+
 class ModelInfo(BaseModel):
-    model_version: str = Field(examples=["lgbm-baseline-0.1.0"])
+    model_version: str = Field(examples=["mlp-2026.11.1"])
     trained_at: AwareDatetime = Field(examples=["2026-02-01T03:00:00Z"])
     thresholds: Thresholds
     metrics: dict[str, float] = Field(
-        description="Free-form numeric evaluation metrics.",
-        examples=[{"pr_auc": 0.41, "recall_at_1pct_fpr": 0.62}],
+        description=(
+            "Numeric evaluation metrics of the artifact, flattened as `<split>.<metric>` "
+            "(for example `test.pr_auc`). Measured on synthetic data."
+        ),
+        examples=[{"test.pr_auc": 0.46, "test.recall_at_fpr_1pct": 0.95}],
     )
 
 

@@ -15,6 +15,11 @@ from payments_shared.schemas import ProblemDetails
 PROBLEM_MEDIA_TYPE = "application/problem+json"
 
 
+def problem_type(slug: str) -> str:
+    """The ``type`` URI of a problem: ``urn:problem:<slug>``."""
+    return f"urn:problem:{slug}"
+
+
 class ProblemJSONResponse(JSONResponse):
     media_type = PROBLEM_MEDIA_TYPE
 
@@ -33,7 +38,9 @@ def not_implemented(request: Request) -> ProblemJSONResponse:
     detail = (
         f"{request.method} {request.url.path} is part of the contract but is not implemented yet."
     )
-    return problem_response(request, 501, "Not Implemented", detail)
+    return problem_response(
+        request, 501, "Not Implemented", detail, type=problem_type("not-implemented")
+    )
 
 
 def problem_responses(*statuses: int) -> dict[int | str, dict[str, Any]]:
@@ -49,6 +56,7 @@ _TITLES = {
     409: "Conflict",
     422: "Validation error",
     501: "Not implemented",
+    503: "Service unavailable",
 }
 
 
@@ -60,7 +68,12 @@ def install_problem_handling(app: FastAPI) -> None:
         errors = jsonable_encoder(exc.errors(), custom_encoder={Exception: str})
         trimmed = [{k: e[k] for k in ("loc", "msg", "type") if k in e} for e in errors]
         return problem_response(
-            request, 422, "Validation error", "The request is not valid.", errors=trimmed
+            request,
+            422,
+            "Validation error",
+            "The request is not valid.",
+            type=problem_type("validation-error"),
+            errors=trimmed,
         )
 
     original_openapi = app.openapi
