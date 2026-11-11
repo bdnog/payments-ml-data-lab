@@ -1,0 +1,82 @@
+# Local development stack. Configuration comes from environment variables
+# (see .env.example); every variable has a default, so `docker compose up` works without a .env.
+#
+#   docker compose up -d --build                       # postgres, redis, both APIs
+#   docker compose run --rm settlement-batch           # one-off batch run (profile "batch")
+#   SETTLEMENT_RUN_DATE=2026-11-10 docker compose run --rm settlement-batch
+
+name: payments-ml-data-lab
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-payments}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-payments}
+      POSTGRES_DB: ${POSTGRES_DB:-payments}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  risk-scoring-api:
+    build:
+      context: .
+      dockerfile: services/risk-scoring-api/Dockerfile
+    environment:
+      RISK_APP_VERSION: ${RISK_APP_VERSION:-0.1.0}
+      RISK_LOG_LEVEL: ${RISK_LOG_LEVEL:-INFO}
+    ports:
+      - "${RISK_API_PORT:-8001}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  settlement-service-api:
+    build:
+      context: .
+      dockerfile: services/settlement-service/Dockerfile
+    environment:
+      SETTLEMENT_APP_VERSION: ${SETTLEMENT_APP_VERSION:-0.1.0}
+      SETTLEMENT_LOG_LEVEL: ${SETTLEMENT_LOG_LEVEL:-INFO}
+    ports:
+      - "${SETTLEMENT_API_PORT:-8002}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Same image as the API, different command. Not started by default.
+  settlement-batch:
+    profiles: ["batch"]
+    build:
+      context: .
+      dockerfile: services/settlement-service/Dockerfile
+    command: ["python", "-m", "settlement.batch", "run", "--date", "${SETTLEMENT_RUN_DATE:-2026-11-10}"]
+    environment:
+      SETTLEMENT_APP_VERSION: ${SETTLEMENT_APP_VERSION:-0.1.0}
+      SETTLEMENT_LOG_LEVEL: ${SETTLEMENT_LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
