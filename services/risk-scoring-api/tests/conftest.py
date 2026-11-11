@@ -35,3 +35,27 @@ TRAINING_PROFILE = Profile(
 def training_transactions() -> pl.DataFrame:
     """Transactions of a small generated world (session-scoped: generated once)."""
     return generate_world(TRAINING_PROFILE)["transactions"]
+
+
+@pytest.fixture(scope="session")
+def prepared(training_transactions):
+    """Split, labeled and encoded training world (the preprocessing is under test elsewhere)."""
+    from risk_scoring.training.dataset import prepare_data
+
+    return prepare_data(training_transactions, min_category_count=5)
+
+
+@pytest.fixture(scope="session")
+def trained(prepared):
+    """A model trained on the small world, shared by every test that needs a real one."""
+    from risk_scoring.training.trainer import TrainConfig, train_model
+
+    train, validation = prepared.splits["train"], prepared.splits["validation"]
+    return train_model(
+        train.encoded,
+        train.labels,
+        validation.encoded,
+        validation.labels,
+        prepared.preprocessor.vocab_sizes,
+        TrainConfig(max_epochs=15, patience=4),
+    )
