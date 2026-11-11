@@ -5,7 +5,6 @@ from typing import Any, Union, get_args, get_origin
 
 import polars as pl
 import pytest
-from fastapi.testclient import TestClient
 from pydantic import AwareDatetime, BaseModel, ValidationError
 
 from payments_shared.data_contracts import (
@@ -17,7 +16,6 @@ from payments_shared.data_contracts import (
 )
 from payments_shared.paths import contracts_dir
 from payments_shared.schemas import ProblemDetails
-from settlement.api.main import create_app
 from settlement.api.schemas import (
     BreaksPage,
     BreakType,
@@ -29,15 +27,9 @@ from settlement.api.schemas import (
     RunStatus,
     SettlementsPage,
 )
-from settlement.config import Settings
 
 EXAMPLES = contracts_dir() / "examples" / "settlement"
 RUN_ID = "run_4f9c2a7d10be"
-
-
-@pytest.fixture(scope="module")
-def client():
-    return TestClient(create_app(Settings(app_version="1.0.0")))
 
 
 def assert_problem(response, status: int) -> dict[str, Any]:
@@ -79,7 +71,7 @@ def test_example_rows_honor_the_mart_data_contract(file, page_model, contract):
     assert validate_dataframe(frame, spec) == []
 
 
-# --- stub routes ------------------------------------------------------------------------------
+# --- parameters and routes --------------------------------------------------------------------
 
 
 def test_health_still_works(client):
@@ -88,28 +80,6 @@ def test_health_still_works(client):
         "service": "settlement-service",
         "version": "1.0.0",
     }
-
-
-@pytest.mark.parametrize(
-    "method, url, body",
-    [
-        ("GET", "/v1/settlements", None),
-        (
-            "GET",
-            "/v1/settlements?merchant_id=mer_5d7a1e&from=2026-01-01&to=2026-01-31&limit=50",
-            None,
-        ),
-        ("GET", "/v1/reconciliation/breaks", None),
-        ("GET", "/v1/reconciliation/breaks?date=2026-01-15&type=FEE_MISMATCH&limit=10", None),
-        ("GET", "/v1/exports/fee_summary/2026-01-15", None),
-        ("POST", "/v1/runs", {"run_date": "2026-01-15"}),
-        ("GET", f"/v1/runs/{RUN_ID}", None),
-    ],
-)
-def test_stub_routes_answer_501_problems(client, method, url, body):
-    response = client.request(method, url, json=body)
-    problem = assert_problem(response, 501)
-    assert problem["instance"] == url.split("?")[0]
 
 
 @pytest.mark.parametrize(
@@ -264,6 +234,7 @@ def test_openapi_describes_the_v1_contract(client):
     paths = schema["paths"]
     assert set(paths) == {
         "/health",
+        "/ready",
         "/v1/settlements",
         "/v1/reconciliation/breaks",
         "/v1/exports/{mart}/{date}",
@@ -275,17 +246,24 @@ def test_openapi_describes_the_v1_contract(client):
     assert params == {"merchant_id", "from", "to", "cursor", "limit"}
     limit = next(p for p in paths["/v1/settlements"]["get"]["parameters"] if p["name"] == "limit")
     assert (limit["schema"]["minimum"], limit["schema"]["maximum"]) == (1, 1000)
+    assert limit["schema"]["default"] == 100
 
     export = paths["/v1/exports/{mart}/{date}"]["get"]["responses"]
     assert list(export["200"]["content"]) == ["application/vnd.apache.parquet"]
+    assert list(export["404"]["content"]) == ["application/problem+json"]
 
     runs = paths["/v1/runs"]["post"]["responses"]
-    assert {"200", "202", "422", "501"} <= set(runs)
+    assert {"200", "202", "422", "503"} <= set(runs) and "501" not in runs
+    assert "Location" in runs["202"]["headers"]
     assert "Idempotent by `run_date`" in paths["/v1/runs"]["post"]["description"]
 
-    for operation in (paths["/v1/settlements"]["get"], paths["/v1/runs/{run_id}"]["get"]):
-        content = operation["responses"]["501"]["content"]
-        assert list(content) == ["application/problem+json"]
+    for route in ("/v1/settlements", "/v1/reconciliation/breaks"):
+        responses = paths[route]["get"]["responses"]
+        assert list(responses["400"]["content"]) == ["application/problem+json"]
+        assert "501" not in responses
+
+    ready = paths["/ready"]["get"]["responses"]
+    assert set(ready) == {"200", "503"}
 
     components = schema["components"]["schemas"]
     assert set(components["Mart"]["enum"]) == {m.value for m in Mart}

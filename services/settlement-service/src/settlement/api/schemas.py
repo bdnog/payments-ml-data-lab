@@ -102,6 +102,12 @@ class BreaksPage(BaseModel):
     )
 
 
+class ReadyResponse(BaseModel):
+    """``GET /ready``: the runs database answers and the marts directory is readable."""
+
+    status: str = Field(examples=["ready"])
+
+
 class RunRequest(BaseModel):
     run_date: dt.date = Field(description="Business date to settle.", examples=["2026-01-15"])
 

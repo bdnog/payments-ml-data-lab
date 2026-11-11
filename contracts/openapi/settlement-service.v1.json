@@ -265,6 +265,23 @@
         "title": "ProblemDetails",
         "type": "object"
       },
+      "ReadyResponse": {
+        "description": "``GET /ready``: the runs database answers and the marts directory is readable.",
+        "properties": {
+          "status": {
+            "examples": [
+              "ready"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "ReadyResponse",
+        "type": "object"
+      },
       "ReconciliationBreak": {
         "description": "One row of the ``reconciliation_breaks`` mart.",
         "properties": {
@@ -543,7 +560,7 @@
     }
   },
   "info": {
-    "description": "Read-mostly API over the marts produced by the settlement batch. **v1 contract**: only `/health`\nis implemented; the `/v1` routes answer `501`.\n",
+    "description": "Read-mostly API over the marts produced by the settlement batch, plus the registration of runs.\n\n* The marts are Hive-partitioned Parquet; `/v1/settlements` and `/v1/reconciliation/breaks` page\n  through them with opaque keyset cursors, and `/v1/exports/...` downloads a partition as Parquet.\n* `POST /v1/runs` only *registers* a run (idempotent by `run_date`); a separate worker executes it.\n* `daily_settlement_by_merchant` is the **ledger-expected payout**, not what the PSP confirmed.\n\nAll data is synthetic.\n",
     "title": "settlement-service",
     "version": "1.0.0"
   },
@@ -551,6 +568,7 @@
   "paths": {
     "/health": {
       "get": {
+        "description": "Liveness only: the process is up.",
         "operationId": "health_health_get",
         "responses": {
           "200": {
@@ -570,9 +588,41 @@
         ]
       }
     },
+    "/ready": {
+      "get": {
+        "description": "Readiness: `200` when the runs database answers and the marts directory is readable.",
+        "operationId": "ready",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Service unavailable"
+          }
+        },
+        "summary": "Ready",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
     "/v1/exports/{mart}/{date}": {
       "get": {
-        "description": "The mart produced by the run of the given business date, as a Parquet file. The format is carried by the media type, so the URL has no `.parquet` suffix.",
+        "description": "The mart produced by the run of the given business date, as a Parquet file (zstd). The format is carried by the media type, so the URL has no `.parquet` suffix. A date with no partition (the run never happened) is a `404`; a run that found nothing is an empty file with the right schema.",
         "operationId": "export_mart",
         "parameters": [
           {
@@ -629,16 +679,6 @@
               }
             },
             "description": "Validation error"
-          },
-          "501": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Not implemented"
           }
         },
         "summary": "Download a mart as Parquet",
@@ -649,7 +689,7 @@
     },
     "/v1/reconciliation/breaks": {
       "get": {
-        "description": "Rows of the `reconciliation_breaks` mart. `date` is the business date of the run that found the break (`run_date`). Cursor pagination, as for settlements.",
+        "description": "Rows of the `reconciliation_breaks` mart, ordered by `settlement_date`, `break_id`. `date` is the business date of the run that found the break (`run_date`), which equals the settlement date of every break of that run. Cursor pagination, as for settlements; an invalid cursor is a `400`.",
         "operationId": "list_reconciliation_breaks",
         "parameters": [
           {
@@ -733,6 +773,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid cursor"
+          },
           "422": {
             "content": {
               "application/problem+json": {
@@ -742,16 +792,6 @@
               }
             },
             "description": "Validation error"
-          },
-          "501": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Not implemented"
           }
         },
         "summary": "Reconciliation breaks",
@@ -762,7 +802,7 @@
     },
     "/v1/runs": {
       "post": {
-        "description": "Idempotent by `run_date`. `202` when a new run is accepted; `200` with the existing run when that date already has a run that has not failed.",
+        "description": "Idempotent by `run_date`. `202` with a `Location` header when a new run is accepted (a worker will execute it); `200` with the existing run when that date already has a run that has not failed. A `FAILED` run does not block a new request.",
         "operationId": "create_run",
         "requestBody": {
           "content": {
@@ -793,7 +833,15 @@
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "A new run was accepted and is PENDING.",
+            "headers": {
+              "Location": {
+                "description": "URL of the new run, `/v1/runs/{run_id}`.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "422": {
             "content": {
@@ -805,7 +853,7 @@
             },
             "description": "Validation error"
           },
-          "501": {
+          "503": {
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -813,7 +861,7 @@
                 }
               }
             },
-            "description": "Not implemented"
+            "description": "Service unavailable"
           }
         },
         "summary": "Request a settlement run",
@@ -868,7 +916,7 @@
             },
             "description": "Validation error"
           },
-          "501": {
+          "503": {
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -876,7 +924,7 @@
                 }
               }
             },
-            "description": "Not implemented"
+            "description": "Service unavailable"
           }
         },
         "summary": "Get a settlement run",
@@ -887,7 +935,7 @@
     },
     "/v1/settlements": {
       "get": {
-        "description": "Rows of the `daily_settlement_by_merchant` mart, ordered by `settlement_date`, `merchant_id`. Cursor pagination: pass `next_cursor` back as `cursor` until it is null.",
+        "description": "Rows of the `daily_settlement_by_merchant` mart, ordered by `settlement_date`, `merchant_id`: the **ledger-expected payout** for each day, not what the PSP confirmed. Cursor pagination: pass `next_cursor` back as `cursor` until it is null. An invalid cursor is a `400`.",
         "operationId": "list_settlements",
         "parameters": [
           {
@@ -989,6 +1037,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid cursor"
+          },
           "422": {
             "content": {
               "application/problem+json": {
@@ -998,16 +1056,6 @@
               }
             },
             "description": "Validation error"
-          },
-          "501": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Not implemented"
           }
         },
         "summary": "Daily settlement per merchant",
