@@ -130,3 +130,9 @@ def test_every_reason_code_is_a_contract_code(scorer, requests):
     reqs, _ = requests
     seen = {c for s in scorer.score_many(reqs) for c in s.reason_codes}
     assert seen <= set(ReasonCode)
+
+
+def test_warm_up_scores_without_side_effects(scorer):
+    before = scorer.score_many([])
+    scorer.warm_up(rounds=2)
+    assert before == [] and scorer.model_version == "mlp-test-0.1"

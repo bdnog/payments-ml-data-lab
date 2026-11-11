@@ -25,6 +25,31 @@ from risk_scoring.training.artifacts import Bundle, load_bundle
 from risk_scoring.training.thresholds import BandThresholds, assign_bands
 from risk_scoring.training.trainer import predict_scores
 
+# A plausible request used only to warm the process up (it is never logged or returned).
+_WARMUP_PAYLOAD: dict[str, Any] = {
+    "transaction_id": "txn_000000000000",
+    "occurred_at": "2026-01-01T12:00:00Z",
+    "amount_minor": 5_000,
+    "currency": "BRL",
+    "channel": "web",
+    "installments": 1,
+    "merchant": {"id": "mer_000000", "mcc": "5411"},
+    "card": {"bin": "000000", "issuer_country": "BR", "is_new_for_merchant": False},
+    "device": {
+        "id": "dev_0000000000",
+        "ip_country": "BR",
+        "is_proxy": False,
+        "is_new_for_account": False,
+    },
+    "account": {"id": "acc_00000000", "age_days": 100},
+    "behavior": {
+        "txn_count_1h": 0,
+        "txn_count_24h": 1,
+        "avg_amount_30d_minor": 5_000,
+        "seconds_since_last_txn": 3_600,
+    },
+}
+
 
 @dataclass(frozen=True)
 class Scored:
@@ -75,6 +100,16 @@ class Scorer:
         return self.bundle.reason_rules
 
     # --- scoring --------------------------------------------------------------------------------
+
+    def warm_up(self, rounds: int = 5) -> None:
+        """Run a few throwaway scorings so the first real request does not pay one-off costs.
+
+        The first call of a Polars expression or a torch forward pass is much slower than the
+        following ones (lazy initialization); without this the first caller sees tens of ms.
+        """
+        request = ScoreRequest.model_validate(_WARMUP_PAYLOAD)
+        for _ in range(rounds):
+            self.score_one(request)
 
     def score_many(self, requests: Sequence[ScoreRequest]) -> list[Scored]:
         """One batched forward pass for all requests; results in request order."""

@@ -53,6 +53,7 @@ def create_app(
         model_dir = settings.resolved_model_dir()
         try:
             app.state.scorer = Scorer.load(model_dir, settings)
+            app.state.scorer.warm_up()
             log.info("model loaded version=%s dir=%s", app.state.scorer.model_version, model_dir)
         except Exception as exc:  # noqa: BLE001 - any failure means "not ready", whatever it is
             app.state.load_error = f"{exc.__class__.__name__}: {exc}"

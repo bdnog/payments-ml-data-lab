@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help sync lint format test run-risk run-settlement-api up down build data-sample data-full data-validate contracts contracts-check train-risk eval-risk promote-model bench-risk
+.PHONY: help sync lint format test run-risk run-settlement-api up down build data-sample data-full data-validate contracts contracts-check train-risk eval-risk promote-model bench-risk migrate-risk test-db demo-score
 
 help: ## List available targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -69,3 +69,15 @@ promote-model: ## Copy a trained run into $(RISK_DIR)/models/current (VERSION=ml
 
 bench-risk: ## In-process latency of 1,000 single-request scorings with the promoted model (p50, p95)
 	uv run python scripts/bench_risk.py
+
+migrate-risk: ## Apply the Alembic migrations to the risk_scoring database (needs Postgres: make up)
+	cd $(RISK_DIR) && uv run alembic upgrade head
+
+test-db: ## Start Postgres and run the SQL tests of the decision log against a throwaway database
+	docker compose up -d --wait postgres
+	docker compose exec -T postgres psql -U payments -d payments -c "CREATE DATABASE risk_scoring_test" 2>/dev/null || true
+	RISK_TEST_DATABASE_URL=postgresql+psycopg://payments:payments@localhost:$(or $(POSTGRES_PORT),5432)/risk_scoring_test \
+		uv run pytest $(RISK_DIR)/tests/persistence -v
+
+demo-score: ## Replay sample rows through the running API (make up first): scores, batch, replay, 409
+	uv run python scripts/score_sample.py --url http://localhost:$(or $(RISK_API_PORT),8001)
