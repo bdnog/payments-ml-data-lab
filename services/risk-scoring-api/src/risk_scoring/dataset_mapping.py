@@ -6,6 +6,7 @@ in sync with the data contract). Tests and scripts reuse it to replay dataset ro
 """
 
 from collections.abc import Iterable, Sequence
+from functools import cache
 from typing import Any
 
 import polars as pl
@@ -45,10 +46,16 @@ def request_to_feature_row(request: ScoreRequest) -> dict[str, Any]:
     return {column: _get_path(request, FEATURE_PATHS[column]) for column in required_columns()}
 
 
+@cache
+def feature_schema() -> dict[str, pl.DataType]:
+    """Polars schema of the contract's feature columns (cached: it is read on every request)."""
+    contract = load_contract("transactions")
+    return {name: contract.schema[name] for name in required_columns()}
+
+
 def requests_to_frame(requests: Sequence[ScoreRequest]) -> pl.DataFrame:
     """A frame with exactly the contract's feature columns and dtypes: the serving input."""
-    contract = load_contract("transactions")
-    schema = {name: contract.schema[name] for name in required_columns()}
+    schema = feature_schema()
     rows = [request_to_feature_row(r) for r in requests]
     return pl.DataFrame(rows, schema=schema)
 

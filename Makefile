@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help sync lint format test run-risk run-settlement-api up down build data-sample data-full data-validate contracts contracts-check train-risk eval-risk promote-model
+.PHONY: help sync lint format test run-risk run-settlement-api up down build data-sample data-full data-validate contracts contracts-check train-risk eval-risk promote-model bench-risk
 
 help: ## List available targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -66,3 +66,6 @@ promote-model: ## Copy a trained run into $(RISK_DIR)/models/current (VERSION=ml
 	rm -rf $(RISK_DIR)/models/current
 	cp -R $(RISK_DIR)/models/runs/$(VERSION) $(RISK_DIR)/models/current
 	@echo "promoted $(VERSION): review and commit $(RISK_DIR)/models/current"
+
+bench-risk: ## In-process latency of 1,000 single-request scorings with the promoted model (p50, p95)
+	uv run python scripts/bench_risk.py

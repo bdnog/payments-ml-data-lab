@@ -76,3 +76,22 @@ def test_the_sample_covers_the_hard_cases_the_parity_test_relies_on(rows):
 def test_feature_row_of_a_request_has_the_contract_columns(rows):
     request = row_to_request(rows.row(0, named=True))
     assert list(request_to_feature_row(request)) == list(required_columns())
+
+
+# --- the final scores, through the real serving class -------------------------------------------
+
+
+def test_final_scores_through_the_scorer_equal_the_training_path(rows, scorer):
+    """Same model, same rows: the batch (training) path and the request (serving) path agree."""
+    from risk_scoring.training.trainer import predict_scores
+
+    training_scores = predict_scores(
+        scorer.bundle.model, scorer.bundle.preprocessor.prepare(feature_frame(rows))
+    )
+    requests = [row_to_request(r) for r in rows.iter_rows(named=True)]
+
+    batch_scores = np.array([s.score for s in scorer.score_many(requests)])
+    single_scores = np.array([scorer.score_one(r).score for r in requests])
+
+    np.testing.assert_allclose(batch_scores, training_scores, rtol=0, atol=1e-6)
+    np.testing.assert_allclose(single_scores, training_scores, rtol=0, atol=1e-6)

@@ -1,5 +1,7 @@
 """Fixtures shared by the risk-scoring tests."""
 
+from pathlib import Path
+
 import polars as pl
 import pytest
 
@@ -59,3 +61,39 @@ def trained(prepared):
         prepared.preprocessor.vocab_sizes,
         TrainConfig(max_epochs=15, patience=4),
     )
+
+
+@pytest.fixture(scope="session")
+def model_dir(tmp_path_factory, prepared, trained) -> Path:
+    """A small artifact bundle written to a temp dir: what the API and scorer tests load."""
+    from datetime import UTC, datetime
+
+    from risk_scoring.serving.reasons import ReasonRules
+    from risk_scoring.training.artifacts import save_bundle
+    from risk_scoring.training.thresholds import choose_thresholds
+    from risk_scoring.training.trainer import TrainConfig, predict_scores
+
+    validation = prepared.splits["validation"]
+    thresholds = choose_thresholds(
+        validation.labels, predict_scores(trained.model, validation.encoded)
+    )
+    directory = tmp_path_factory.mktemp("model")
+    save_bundle(
+        directory,
+        model=trained.model,
+        preprocessor=prepared.preprocessor,
+        thresholds=thresholds,
+        reason_rules=ReasonRules(),
+        train_config=TrainConfig(max_epochs=15, patience=4),
+        model_version="mlp-test-0.1",
+        trained_at=datetime(2026, 2, 1, 3, 0, tzinfo=UTC),
+        flat_metrics={"test.pr_auc": 0.5, "test.recall_at_fpr_1pct": 0.9},
+    )
+    return directory
+
+
+@pytest.fixture(scope="session")
+def scorer(model_dir):
+    from risk_scoring.serving.scorer import Scorer
+
+    return Scorer.load(model_dir)
