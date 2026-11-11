@@ -209,6 +209,7 @@ class ModelInfo(BaseModel):
 
 # Every ``role: feature`` column of the contract and the request field that carries it.
 FEATURE_PATHS: dict[str, str] = {
+    "occurred_at": "occurred_at",
     "amount_minor": "amount_minor",
     "mcc": "merchant.mcc",
     "channel": "channel",
@@ -229,7 +230,6 @@ FEATURE_PATHS: dict[str, str] = {
 # Identity and metadata columns the request also carries (not model inputs).
 IDENTITY_PATHS: dict[str, str] = {
     "transaction_id": "transaction_id",
-    "occurred_at": "occurred_at",
     "currency": "currency",
     "merchant_id": "merchant.id",
     "account_id": "account.id",

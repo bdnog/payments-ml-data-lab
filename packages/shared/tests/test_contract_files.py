@@ -54,6 +54,7 @@ def test_transactions_roles_follow_the_label_policy():
         "chargeback_reported_at"
     ]
     assert {c.name for c in contract.columns_with_role(Role.FEATURE)} == {
+        "occurred_at",
         "amount_minor",
         "mcc",
         "channel",

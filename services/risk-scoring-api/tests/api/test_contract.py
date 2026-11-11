@@ -214,6 +214,14 @@ def test_every_feature_column_of_the_contract_is_represented_in_the_request():
         assert field_exists(ScoreRequest, path), f"{column} -> {path} is not a request field"
 
 
+def test_occurred_at_is_a_model_input_and_the_only_one_that_is_a_timestamp():
+    """Phase 3 decision: time-of-day features need ``occurred_at``, so it has role ``feature``."""
+    contract = load_contract("transactions")
+    assert contract.column("occurred_at").role is Role.FEATURE
+    assert FEATURE_PATHS["occurred_at"] == "occurred_at"
+    assert "occurred_at" not in IDENTITY_PATHS
+
+
 def test_request_model_has_no_field_that_the_contract_does_not_know():
     """The reverse direction: nothing in the request is unmapped (no silent extra input)."""
 

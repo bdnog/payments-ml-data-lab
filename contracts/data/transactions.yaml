@@ -16,8 +16,10 @@ columns:
   - name: occurred_at
     type: timestamp_utc
     nullable: false
-    role: metadata
-    description: When the transaction was attempted.
+    role: feature
+    description: >-
+      When the transaction was attempted. Available at request time; the risk model derives
+      time-of-day features from it (hour and weekday, in UTC), never the raw timestamp.
   - name: account_id
     type: string
     nullable: false
