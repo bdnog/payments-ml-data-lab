@@ -23,6 +23,7 @@ from risk_scoring.api.schemas import (
     ScoreResponse,
 )
 from risk_scoring.config import Settings
+from risk_scoring.dataset_mapping import iter_requests, row_to_request
 
 EXAMPLES = contracts_dir() / "examples" / "risk-scoring"
 SAMPLE_TRANSACTIONS = repo_root() / "data" / "samples" / "risk" / "transactions.parquet"
@@ -238,26 +239,11 @@ def test_request_model_has_no_field_that_the_contract_does_not_know():
     assert leaf_paths(ScoreRequest) == set(FEATURE_PATHS.values()) | set(IDENTITY_PATHS.values())
 
 
-def set_path(target: dict[str, Any], path: str, value: Any) -> None:
-    *parents, leaf = path.split(".")
-    for parent in parents:
-        target = target.setdefault(parent, {})
-    target[leaf] = value
-
-
-def row_to_request(row: dict[str, Any]) -> ScoreRequest:
-    payload: dict[str, Any] = {}
-    for column, path in {**IDENTITY_PATHS, **FEATURE_PATHS}.items():
-        set_path(payload, path, row[column])
-    return ScoreRequest.model_validate(payload)
-
-
 def test_every_row_of_the_committed_sample_is_a_valid_score_request():
     transactions = pl.read_parquet(SAMPLE_TRANSACTIONS)
     assert transactions.height > 1_000
 
-    for row in transactions.iter_rows(named=True):
-        row_to_request(row)
+    assert sum(1 for _ in iter_requests(transactions)) == transactions.height
 
 
 def test_the_request_carries_the_values_of_the_row_unchanged():
