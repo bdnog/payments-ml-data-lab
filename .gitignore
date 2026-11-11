@@ -218,3 +218,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project: generated data (only small synthetic samples are tracked)
+data/**/*.parquet
+!data/samples/**/*.parquet
+
+# Project: keep the env template tracked
+!.env.example

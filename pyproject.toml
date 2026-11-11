@@ -1,0 +1,37 @@
+[project]
+name = "payments-ml-data-lab"
+version = "0.1.0"
+description = "Portfolio monorepo: online fraud scoring and batch settlement for a synthetic payments system."
+requires-python = ">=3.12"
+dependencies = []
+
+# Virtual workspace root: not a buildable/published package.
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/*", "services/*"]
+
+[dependency-groups]
+dev = ["pytest", "pytest-cov", "httpx", "ruff"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "N"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["payments_shared", "risk_scoring", "settlement"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "packages/shared/tests",
+    "services/risk-scoring-api/tests",
+    "services/settlement-service/tests",
+]
+addopts = "-q"
