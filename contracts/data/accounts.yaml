@@ -1,0 +1,24 @@
+name: accounts
+version: 1
+description: >-
+  Reference data. One row per synthetic customer account. Some accounts exist before the data window
+  starts, others are created during it, so account age varies and new accounts exist.
+primary_key: [account_id]
+columns:
+  - name: account_id
+    type: string
+    nullable: false
+    role: id
+    description: Unique account id.
+    constraints: { pattern: "^acc_[0-9a-f]{8}$" }
+  - name: created_at
+    type: timestamp_utc
+    nullable: false
+    role: metadata
+    description: When the account was opened.
+  - name: home_country
+    type: string
+    nullable: false
+    role: metadata
+    description: ISO 3166-1 alpha-2 country of the account holder (about 95% BR).
+    constraints: { pattern: "^[A-Z]{2}$" }

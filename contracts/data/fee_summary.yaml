@@ -1,0 +1,50 @@
+name: fee_summary
+version: 1
+description: >-
+  Mart produced by the settlement batch (Phase 4). One row per settlement date, merchant and
+  currency, comparing the fee the PSP charged with the fee expected from the contracted mdr_bps,
+  over SALE records. Expected fee per record is round_half_up(gross * mdr_bps / 10000).
+primary_key: [settlement_date, merchant_id, currency]
+columns:
+  - name: settlement_date
+    type: date
+    nullable: false
+    role: id
+    description: Day the money moves.
+  - name: merchant_id
+    type: string
+    nullable: false
+    role: id
+    description: Foreign key to merchants.merchant_id.
+    constraints: { pattern: "^mer_[0-9a-f]{6}$" }
+  - name: currency
+    type: string
+    nullable: false
+    role: id
+    description: ISO 4217 currency. Only BRL for now.
+    constraints: { accepted_values: [BRL] }
+  - name: gross_minor
+    type: int64
+    nullable: false
+    role: metadata
+    description: Sum of SALE gross amounts.
+    constraints: { min: 0 }
+  - name: expected_fee_minor
+    type: int64
+    nullable: false
+    role: metadata
+    description: Sum of the expected fees.
+    constraints: { min: 0 }
+  - name: actual_fee_minor
+    type: int64
+    nullable: false
+    role: metadata
+    description: Sum of the fees the PSP charged.
+    constraints: { min: 0 }
+  - name: fee_diff_minor
+    type: int64
+    nullable: false
+    role: metadata
+    description: actual_fee_minor - expected_fee_minor.
+rules:
+  - { name: diff_is_consistent, expr: "fee_diff_minor = actual_fee_minor - expected_fee_minor" }

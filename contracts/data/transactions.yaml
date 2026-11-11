@@ -1,0 +1,158 @@
+name: transactions
+version: 1
+description: >-
+  One row per card transaction attempt, with point-in-time behavioral features and fraud labels.
+  Features only use data strictly before occurred_at (the current transaction is excluded).
+  Whether a transaction was declined upstream is deliberately not a column, because it would leak
+  the label. Rows are sorted by occurred_at.
+primary_key: [transaction_id]
+columns:
+  - name: transaction_id
+    type: string
+    nullable: false
+    role: id
+    description: Unique transaction id. Ids grow with time.
+    constraints: { pattern: "^txn_[0-9a-f]{12}$" }
+  - name: occurred_at
+    type: timestamp_utc
+    nullable: false
+    role: metadata
+    description: When the transaction was attempted.
+  - name: account_id
+    type: string
+    nullable: false
+    role: id
+    description: Foreign key to accounts.account_id.
+    constraints: { pattern: "^acc_[0-9a-f]{8}$" }
+  - name: merchant_id
+    type: string
+    nullable: false
+    role: id
+    description: Foreign key to merchants.merchant_id.
+    constraints: { pattern: "^mer_[0-9a-f]{6}$" }
+  - name: amount_minor
+    type: int64
+    nullable: false
+    role: feature
+    description: Amount in minor units (centavos). Never a float, see ADR 0005.
+    constraints: { min: 50, max: 5000000 }
+  - name: currency
+    type: string
+    nullable: false
+    role: metadata
+    description: ISO 4217 currency. Only BRL for now; the column exists so other currencies can be added.
+    constraints: { accepted_values: [BRL] }
+  - name: mcc
+    type: string
+    nullable: false
+    role: feature
+    description: Merchant category code, copied from the merchant (available at request time).
+    constraints: { pattern: "^[0-9]{4}$" }
+  - name: channel
+    type: string
+    nullable: false
+    role: feature
+    description: Where the card was used.
+    constraints: { accepted_values: [web, app, pos] }
+  - name: installments
+    type: int64
+    nullable: false
+    role: feature
+    description: Number of installments.
+    constraints: { min: 1, max: 12 }
+  - name: card_bin
+    type: string
+    nullable: false
+    role: feature
+    description: First 6 digits of the card number, from a pool of about 40 synthetic BINs.
+    constraints: { pattern: "^[0-9]{6}$" }
+  - name: issuer_country
+    type: string
+    nullable: false
+    role: feature
+    description: ISO 3166-1 alpha-2 country of the card issuer.
+    constraints: { pattern: "^[A-Z]{2}$" }
+  - name: device_id
+    type: string
+    nullable: false
+    role: id
+    description: Device fingerprint; for channel pos it is the terminal id.
+    constraints: { pattern: "^dev_[0-9a-f]{10}$" }
+  - name: ip_country
+    type: string
+    nullable: true
+    role: feature
+    description: ISO 3166-1 alpha-2 country of the client IP. Null for channel pos.
+    constraints: { pattern: "^[A-Z]{2}$" }
+  - name: is_proxy
+    type: bool
+    nullable: false
+    role: feature
+    description: Whether the client IP looks like a proxy or VPN. False for channel pos.
+  - name: device_is_new_for_account
+    type: bool
+    nullable: false
+    role: feature
+    description: Point-in-time. True when this account never used this device before. False for pos.
+  - name: card_is_new_for_merchant
+    type: bool
+    nullable: false
+    role: feature
+    description: Point-in-time. True when this account never used this card (BIN) at this merchant before.
+  - name: account_age_days
+    type: int64
+    nullable: false
+    role: feature
+    description: Whole days between account creation and occurred_at.
+    constraints: { min: 0 }
+  - name: txn_count_1h
+    type: int64
+    nullable: false
+    role: feature
+    description: Point-in-time. Prior transactions of the account in the 1 hour before occurred_at.
+    constraints: { min: 0 }
+  - name: txn_count_24h
+    type: int64
+    nullable: false
+    role: feature
+    description: Point-in-time. Prior transactions of the account in the 24 hours before occurred_at.
+    constraints: { min: 0 }
+  - name: avg_amount_30d_minor
+    type: int64
+    nullable: true
+    role: feature
+    description: Point-in-time. Mean amount (half-up) of the account's prior 30 days; null if none.
+    constraints: { min: 0 }
+  - name: seconds_since_last_txn
+    type: int64
+    nullable: true
+    role: feature
+    description: Point-in-time. Seconds since the account's previous transaction; null for the first.
+    constraints: { min: 0 }
+  - name: is_fraud
+    type: bool
+    nullable: false
+    role: analysis_only
+    description: Ground truth. Never a feature and not a training label, see label_source below.
+  - name: fraud_pattern
+    type: string
+    nullable: true
+    role: analysis_only
+    description: Pattern of the fraud episode; null for legitimate transactions.
+    constraints: { accepted_values: [CARD_TESTING, ACCOUNT_TAKEOVER, GEO_MISMATCH, VELOCITY_BURST] }
+  - name: chargeback_reported_at
+    type: timestamp_utc
+    nullable: true
+    role: label_source
+    description: >-
+      When the fraud was reported as a chargeback. Only approved fraud can be reported, and only
+      about 85% of it is; it may fall after the end of the data window. A training label must be
+      derived as "reported on or before a cutoff date".
+rules:
+  - { name: velocity_monotonic, expr: "txn_count_1h <= txn_count_24h" }
+  - { name: fraud_columns_need_fraud, expr: "is_fraud OR (fraud_pattern IS NULL AND chargeback_reported_at IS NULL)" }
+  - { name: fraud_has_pattern, expr: "NOT is_fraud OR fraud_pattern IS NOT NULL" }
+  - { name: chargeback_after_transaction, expr: "chargeback_reported_at IS NULL OR chargeback_reported_at > occurred_at" }
+  - { name: pos_has_no_ip_signals, expr: "channel <> 'pos' OR (ip_country IS NULL AND NOT is_proxy AND NOT device_is_new_for_account)" }
+  - { name: online_has_ip_country, expr: "channel = 'pos' OR ip_country IS NOT NULL" }
+  - { name: first_transaction_has_no_history, expr: "seconds_since_last_txn IS NOT NULL OR (txn_count_24h = 0 AND avg_amount_30d_minor IS NULL)" }

@@ -1,0 +1,49 @@
+name: injected_breaks
+version: 1
+description: >-
+  Ground truth for testing the reconciliation (Phase 4): every discrepancy the generator injected
+  between the ledger (payments, refunds, chargebacks) and the PSP file. At most one break per
+  payment. expected_diff_minor is PSP minus ledger. Rows are sorted by break_id.
+  AMOUNT_MISMATCH: psp gross - ledger amount. MISSING_IN_PSP: -ledger amount. MISSING_IN_LEDGER:
+  +psp gross. DUPLICATE_IN_PSP: +duplicate gross. FEE_MISMATCH: psp fee - expected fee.
+  CHARGEBACK_NOT_IN_LEDGER: +psp gross.
+primary_key: [break_id]
+columns:
+  - name: break_id
+    type: string
+    nullable: false
+    role: id
+    description: Unique break id.
+    constraints: { pattern: "^brk_[0-9a-f]{8}$" }
+  - name: break_type
+    type: string
+    nullable: false
+    role: metadata
+    description: Kind of discrepancy.
+    constraints:
+      accepted_values:
+        - AMOUNT_MISMATCH
+        - MISSING_IN_PSP
+        - MISSING_IN_LEDGER
+        - DUPLICATE_IN_PSP
+        - FEE_MISMATCH
+        - CHARGEBACK_NOT_IN_LEDGER
+  - name: payment_id
+    type: string
+    nullable: true
+    role: id
+    description: The payment involved; null for MISSING_IN_LEDGER, where the PSP record has no payment.
+    constraints: { pattern: "^pay_[0-9a-f]{12}$" }
+  - name: psp_record_id
+    type: string
+    nullable: true
+    role: id
+    description: The PSP record involved; null for MISSING_IN_PSP, where the record is absent.
+    constraints: { pattern: "^psp_[0-9a-f]{12}$" }
+  - name: expected_diff_minor
+    type: int64
+    nullable: false
+    role: metadata
+    description: Signed difference, PSP minus ledger, in minor units.
+rules:
+  - { name: references_something, expr: "payment_id IS NOT NULL OR psp_record_id IS NOT NULL" }

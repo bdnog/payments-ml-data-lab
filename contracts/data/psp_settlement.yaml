@@ -1,0 +1,70 @@
+name: psp_settlement
+version: 1
+description: >-
+  The settlement file received from the payment service provider (PSP): one row per sale, refund
+  or chargeback settled. Only records with settlement_date on or before the last day of the data
+  window exist; items not yet due have no record and are not reconciliation breaks (due-date
+  cutoff, see docs/data-model.md). Rows are sorted by settlement_date.
+  Semantics. SALE: net = gross - fee. REFUND: fee = 0 and net = -gross. CHARGEBACK: flat fee of
+  1500 and net = -(gross + fee). Expected SALE fee = round_half_up(gross * mdr_bps / 10000) using
+  the record's own gross amount.
+primary_key: [psp_record_id]
+columns:
+  - name: psp_record_id
+    type: string
+    nullable: false
+    role: id
+    description: Unique id assigned by the PSP.
+    constraints: { pattern: "^psp_[0-9a-f]{12}$" }
+  - name: merchant_reference
+    type: string
+    nullable: true
+    role: id
+    description: The payment_id as sent by the merchant. Null or unknown for orphan records.
+    constraints: { pattern: "^pay_[0-9a-f]{12}$" }
+  - name: record_type
+    type: string
+    nullable: false
+    role: metadata
+    description: What kind of movement the record settles.
+    constraints: { accepted_values: [SALE, REFUND, CHARGEBACK] }
+  - name: merchant_id
+    type: string
+    nullable: false
+    role: id
+    description: Foreign key to merchants.merchant_id.
+    constraints: { pattern: "^mer_[0-9a-f]{6}$" }
+  - name: gross_amount_minor
+    type: int64
+    nullable: false
+    role: metadata
+    description: Gross amount in minor units; always positive, the sign lives in net_amount_minor.
+    constraints: { min: 1, max: 10000000 }
+  - name: fee_minor
+    type: int64
+    nullable: false
+    role: metadata
+    description: Fee charged by the PSP in minor units.
+    constraints: { min: 0 }
+  - name: net_amount_minor
+    type: int64
+    nullable: false
+    role: metadata
+    description: Signed amount that moves to (positive) or from (negative) the merchant.
+  - name: currency
+    type: string
+    nullable: false
+    role: metadata
+    description: ISO 4217 currency. Only BRL for now.
+    constraints: { accepted_values: [BRL] }
+  - name: settlement_date
+    type: date
+    nullable: false
+    role: metadata
+    description: >-
+      Day the money moves. SALE: capture date + merchant settlement_days. REFUND and CHARGEBACK:
+      event date + 1 day.
+rules:
+  - { name: sale_net, expr: "record_type <> 'SALE' OR net_amount_minor = gross_amount_minor - fee_minor" }
+  - { name: refund_semantics, expr: "record_type <> 'REFUND' OR (fee_minor = 0 AND net_amount_minor = -gross_amount_minor)" }
+  - { name: chargeback_semantics, expr: "record_type <> 'CHARGEBACK' OR (fee_minor = 1500 AND net_amount_minor = -(gross_amount_minor + fee_minor))" }

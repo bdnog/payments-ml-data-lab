@@ -1,0 +1,62 @@
+name: daily_settlement_by_merchant
+version: 1
+description: >-
+  Mart produced by the settlement batch (Phase 4). One row per settlement date, merchant and
+  currency, aggregated from the PSP records of that settlement_date. All amounts are positive
+  magnitudes in minor units and net_minor = gross - fee - refunds - chargebacks.
+primary_key: [settlement_date, merchant_id, currency]
+columns:
+  - name: settlement_date
+    type: date
+    nullable: false
+    role: id
+    description: Day the money moves.
+  - name: merchant_id
+    type: string
+    nullable: false
+    role: id
+    description: Foreign key to merchants.merchant_id.
+    constraints: { pattern: "^mer_[0-9a-f]{6}$" }
+  - name: currency
+    type: string
+    nullable: false
+    role: id
+    description: ISO 4217 currency. Only BRL for now.
+    constraints: { accepted_values: [BRL] }
+  - name: payment_count
+    type: int64
+    nullable: false
+    role: metadata
+    description: Number of SALE records settled.
+    constraints: { min: 0 }
+  - name: gross_minor
+    type: int64
+    nullable: false
+    role: metadata
+    description: Sum of SALE gross amounts.
+    constraints: { min: 0 }
+  - name: fee_minor
+    type: int64
+    nullable: false
+    role: metadata
+    description: Sum of SALE fees.
+    constraints: { min: 0 }
+  - name: refunds_minor
+    type: int64
+    nullable: false
+    role: metadata
+    description: Sum of REFUND gross amounts.
+    constraints: { min: 0 }
+  - name: chargebacks_minor
+    type: int64
+    nullable: false
+    role: metadata
+    description: Sum of CHARGEBACK gross amounts plus their flat fees.
+    constraints: { min: 0 }
+  - name: net_minor
+    type: int64
+    nullable: false
+    role: metadata
+    description: gross_minor - fee_minor - refunds_minor - chargebacks_minor; can be negative.
+rules:
+  - { name: net_is_consistent, expr: "net_minor = gross_minor - fee_minor - refunds_minor - chargebacks_minor" }

@@ -1,0 +1,36 @@
+name: refunds
+version: 1
+description: >-
+  Ledger of refunds. Partial refunds are allowed and a payment can have more than one, but the
+  refunds of a payment never add up to more than its amount. Rows are sorted by created_at.
+primary_key: [refund_id]
+columns:
+  - name: refund_id
+    type: string
+    nullable: false
+    role: id
+    description: Unique refund id.
+    constraints: { pattern: "^ref_[0-9a-f]{12}$" }
+  - name: payment_id
+    type: string
+    nullable: false
+    role: id
+    description: Foreign key to payments.payment_id.
+    constraints: { pattern: "^pay_[0-9a-f]{12}$" }
+  - name: amount_minor
+    type: int64
+    nullable: false
+    role: metadata
+    description: Refunded amount in minor units; positive and at most the payment amount.
+    constraints: { min: 1, max: 5000000 }
+  - name: created_at
+    type: timestamp_utc
+    nullable: false
+    role: metadata
+    description: When the refund was issued; after the payment was captured.
+  - name: reason
+    type: string
+    nullable: false
+    role: metadata
+    description: Why the refund was issued.
+    constraints: { accepted_values: [CUSTOMER_REQUEST, DUPLICATE, PRODUCT_ISSUE] }

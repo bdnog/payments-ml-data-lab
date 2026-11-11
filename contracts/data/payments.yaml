@@ -1,0 +1,62 @@
+name: payments
+version: 1
+description: >-
+  Ledger of money movements: one row per approved (not declined) transaction. A refunded payment
+  stays CAPTURED; refunds are separate rows. Rows are sorted by authorized_at.
+primary_key: [payment_id]
+columns:
+  - name: payment_id
+    type: string
+    nullable: false
+    role: id
+    description: Unique payment id. Ids grow with time.
+    constraints: { pattern: "^pay_[0-9a-f]{12}$" }
+  - name: transaction_id
+    type: string
+    nullable: false
+    role: id
+    description: Foreign key to transactions.transaction_id (one payment per approved transaction).
+    constraints: { pattern: "^txn_[0-9a-f]{12}$" }
+  - name: merchant_id
+    type: string
+    nullable: false
+    role: id
+    description: Foreign key to merchants.merchant_id.
+    constraints: { pattern: "^mer_[0-9a-f]{6}$" }
+  - name: account_id
+    type: string
+    nullable: false
+    role: id
+    description: Foreign key to accounts.account_id.
+    constraints: { pattern: "^acc_[0-9a-f]{8}$" }
+  - name: amount_minor
+    type: int64
+    nullable: false
+    role: metadata
+    description: Amount in minor units (centavos); equals the transaction amount.
+    constraints: { min: 50, max: 5000000 }
+  - name: currency
+    type: string
+    nullable: false
+    role: metadata
+    description: ISO 4217 currency. Only BRL for now.
+    constraints: { accepted_values: [BRL] }
+  - name: status
+    type: string
+    nullable: false
+    role: metadata
+    description: CAPTURED, or VOIDED when the authorization was cancelled before capture.
+    constraints: { accepted_values: [CAPTURED, VOIDED] }
+  - name: authorized_at
+    type: timestamp_utc
+    nullable: false
+    role: metadata
+    description: Equals the transaction occurred_at.
+  - name: captured_at
+    type: timestamp_utc
+    nullable: true
+    role: metadata
+    description: Capture time, 0 to 2 days after authorization. Null if and only if VOIDED.
+rules:
+  - { name: capture_not_before_authorization, expr: "captured_at IS NULL OR captured_at >= authorized_at" }
+  - { name: captured_iff_not_voided, expr: "(status = 'VOIDED' AND captured_at IS NULL) OR (status = 'CAPTURED' AND captured_at IS NOT NULL)" }

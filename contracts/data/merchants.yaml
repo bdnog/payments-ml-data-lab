@@ -1,0 +1,47 @@
+name: merchants
+version: 1
+description: >-
+  Reference data. One row per synthetic merchant, with the contracted fee and settlement terms.
+  Merchant names are generic and never refer to real brands.
+primary_key: [merchant_id]
+columns:
+  - name: merchant_id
+    type: string
+    nullable: false
+    role: id
+    description: Unique merchant id.
+    constraints: { pattern: "^mer_[0-9a-f]{6}$" }
+  - name: name
+    type: string
+    nullable: false
+    role: metadata
+    description: Generic display name, e.g. "Alder Grocer 0042".
+  - name: mcc
+    type: string
+    nullable: false
+    role: metadata
+    description: Merchant category code (4 digits). Copied into transactions as a feature.
+    constraints: { pattern: "^[0-9]{4}$" }
+  - name: country
+    type: string
+    nullable: false
+    role: metadata
+    description: ISO 3166-1 alpha-2 country of the merchant.
+    constraints: { pattern: "^[A-Z]{2}$" }
+  - name: mdr_bps
+    type: int64
+    nullable: false
+    role: metadata
+    description: Contracted merchant discount rate in basis points (100 bps = 1%).
+    constraints: { min: 50, max: 500 }
+  - name: settlement_days
+    type: int64
+    nullable: false
+    role: metadata
+    description: Days between capture and settlement of the sale (D+1, D+2 or D+30).
+    constraints: { accepted_values: [1, 2, 30] }
+  - name: created_at
+    type: timestamp_utc
+    nullable: false
+    role: metadata
+    description: When the merchant was onboarded.

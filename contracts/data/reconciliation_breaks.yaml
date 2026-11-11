@@ -1,0 +1,64 @@
+name: reconciliation_breaks
+version: 1
+description: >-
+  Mart produced by the settlement batch (Phase 4). One row per discrepancy found between the ledger
+  and the PSP file in a run. diff_minor is PSP minus ledger, with the same sign convention as
+  injected_breaks.expected_diff_minor.
+primary_key: [break_id]
+columns:
+  - name: break_id
+    type: string
+    nullable: false
+    role: id
+    description: Unique break id.
+    constraints: { pattern: "^brk_[0-9a-f]{8}$" }
+  - name: run_date
+    type: date
+    nullable: false
+    role: id
+    description: Business date of the batch run that found the break.
+  - name: settlement_date
+    type: date
+    nullable: true
+    role: metadata
+    description: Settlement date of the item; null when it cannot be determined.
+  - name: break_type
+    type: string
+    nullable: false
+    role: metadata
+    description: Kind of discrepancy; same values as injected_breaks.break_type.
+    constraints:
+      accepted_values:
+        - AMOUNT_MISMATCH
+        - MISSING_IN_PSP
+        - MISSING_IN_LEDGER
+        - DUPLICATE_IN_PSP
+        - FEE_MISMATCH
+        - CHARGEBACK_NOT_IN_LEDGER
+  - name: payment_id
+    type: string
+    nullable: true
+    role: id
+    description: The payment involved, if any.
+    constraints: { pattern: "^pay_[0-9a-f]{12}$" }
+  - name: psp_record_id
+    type: string
+    nullable: true
+    role: id
+    description: The PSP record involved, if any.
+    constraints: { pattern: "^psp_[0-9a-f]{12}$" }
+  - name: ledger_amount_minor
+    type: int64
+    nullable: true
+    role: metadata
+    description: Amount on the ledger side; null when the ledger has no entry.
+  - name: psp_amount_minor
+    type: int64
+    nullable: true
+    role: metadata
+    description: Amount on the PSP side; null when the PSP has no record.
+  - name: diff_minor
+    type: int64
+    nullable: false
+    role: metadata
+    description: Signed difference, PSP minus ledger, in minor units.

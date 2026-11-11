@@ -1,0 +1,37 @@
+name: chargebacks
+version: 1
+description: >-
+  Ledger of chargebacks. FRAUD chargebacks come from the fraud label rules: opened_at equals the
+  chargeback_reported_at of the transaction. A few non-fraud chargebacks (friendly fraud) hit
+  legitimate payments. Rows are sorted by opened_at and may fall after the end of the data window.
+primary_key: [chargeback_id]
+columns:
+  - name: chargeback_id
+    type: string
+    nullable: false
+    role: id
+    description: Unique chargeback id.
+    constraints: { pattern: "^cbk_[0-9a-f]{12}$" }
+  - name: payment_id
+    type: string
+    nullable: false
+    role: id
+    description: Foreign key to payments.payment_id.
+    constraints: { pattern: "^pay_[0-9a-f]{12}$" }
+  - name: amount_minor
+    type: int64
+    nullable: false
+    role: metadata
+    description: Charged-back amount in minor units; always the full payment amount.
+    constraints: { min: 50, max: 5000000 }
+  - name: opened_at
+    type: timestamp_utc
+    nullable: false
+    role: metadata
+    description: When the chargeback was opened.
+  - name: reason_code
+    type: string
+    nullable: false
+    role: metadata
+    description: Reason given by the issuer.
+    constraints: { accepted_values: [FRAUD, PRODUCT_NOT_RECEIVED, DUPLICATE_CHARGE] }
