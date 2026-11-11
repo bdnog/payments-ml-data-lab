@@ -27,7 +27,7 @@ The decisions behind the setup are in ADR 0007 (model and features), 0008 (label
 | Loss | `BCEWithLogitsLoss` with `pos_weight = min(neg/pos, 50)` (here the cap of 50 applies) |
 | Optimizer | AdamW, lr 1e-3, weight decay 1e-4, batch size 1024, up to 30 epochs |
 | Early stopping | Validation PR-AUC, patience 5, best weights restored (best epoch 7, stopped after 12) |
-| Parameters | A few thousand; the weights file is 27 KB |
+| Parameters | 5,797 (548 in the embeddings); the weights file is 27 KB |
 | Framework | PyTorch (CPU), seeded, deterministic algorithms on |
 
 **The score is a ranking score in [0, 1], not a calibrated probability.** The weighted loss
