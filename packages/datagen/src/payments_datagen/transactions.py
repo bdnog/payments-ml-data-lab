@@ -71,7 +71,7 @@ def _pick(mask: np.ndarray, if_true: pl.Series, if_false: pl.Series) -> pl.Serie
     return if_true.zip_with(pl.Series(mask), if_false)
 
 
-def _installments(rng: np.random.Generator, amount: np.ndarray) -> np.ndarray:
+def draw_installments(rng: np.random.Generator, amount: np.ndarray) -> np.ndarray:
     """Bigger tickets are more often split into installments (2 to 12, shorter more likely)."""
     p_split = np.clip((amount - 8_000) / 200_000, 0.0, 0.7)
     options = np.arange(2, 13)
@@ -180,7 +180,7 @@ def generate_legit(universe: Universe) -> pl.DataFrame:
             "merchant_id": merchants["merchant_id"].gather(merchant),
             "amount_minor": amount,
             "channel": pl.Series(CHANNELS).gather(channel_code),
-            "installments": _installments(rng, amount),
+            "installments": draw_installments(rng, amount),
             "card_bin": card_bin,
             "device_id": device_id,
             "ip_country": ip_country,
