@@ -1,0 +1,13 @@
+[project]
+name = "payments-shared"
+version = "0.1.0"
+description = "Shared schemas and utilities used by the payments services."
+requires-python = ">=3.12"
+dependencies = ["pydantic>=2.7"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/payments_shared"]

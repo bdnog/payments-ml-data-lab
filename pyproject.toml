@@ -34,4 +34,4 @@ testpaths = [
     "services/risk-scoring-api/tests",
     "services/settlement-service/tests",
 ]
-addopts = "-q"
+addopts = "-q --import-mode=importlib"
