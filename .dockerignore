@@ -1,0 +1,16 @@
+.git
+.github
+.venv
+.env
+.env.*
+!.env.example
+__pycache__
+*.py[cod]
+.ruff_cache
+.pytest_cache
+.coverage
+htmlcov
+data/**/*.parquet
+docs
+scaffold-prompt.md
+**/tests
