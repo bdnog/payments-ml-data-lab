@@ -58,8 +58,8 @@ def input_file(input_dir: Path, dataset: str) -> Path:
     return Path(input_dir) / INPUT_PATHS[dataset]
 
 
-def scan_inputs(input_dir: Path) -> InputDatasets:
-    """Lazy readers for the five input datasets; fails early and clearly if one is missing."""
+def require_inputs(input_dir: Path) -> None:
+    """Fail early and clearly if an input dataset is missing."""
     missing = [
         str(input_file(input_dir, name))
         for name in INPUT_PATHS
@@ -70,6 +70,11 @@ def scan_inputs(input_dir: Path) -> InputDatasets:
             f"input dataset(s) not found: {', '.join(missing)}. Generate a dataset first, e.g. "
             "`uv run python -m payments_datagen generate --profile sample --out DIR`"
         )
+
+
+def scan_inputs(input_dir: Path) -> InputDatasets:
+    """Lazy readers for the five input datasets."""
+    require_inputs(input_dir)
     scan = {name: pl.scan_parquet(input_file(input_dir, name)) for name in INPUT_PATHS}
     return InputDatasets(
         merchants=scan["merchants"],
@@ -86,6 +91,7 @@ def validate_inputs(input_dir: Path) -> None:
     Reads the datasets eagerly (about a second for 500k payments): a run must not start on data
     that is not what the contracts say, because every later number would be wrong without a crash.
     """
+    require_inputs(input_dir)
     frames = {name: pl.read_parquet(input_file(input_dir, name)) for name in INPUT_PATHS}
     violations: list[Violation] = []
     for name, frame in frames.items():
