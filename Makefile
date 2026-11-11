@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help sync lint format test run-risk run-settlement-api up down build data-sample data-full data-validate contracts contracts-check train-risk eval-risk promote-model bench-risk migrate-risk test-db demo-score
+.PHONY: help sync lint format test run-risk run-settlement-api up down build data-sample data-full data-validate contracts contracts-check train-risk eval-risk promote-model bench-risk migrate-risk test-db demo-score settle-run settle-all verify-settlement migrate-settlement demo-settlement bench-settlement
 
 help: ## List available targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -50,6 +50,7 @@ contracts-check: contracts ## Fail if committed OpenAPI documents differ from th
 	test -z "$$(git ls-files --others --exclude-standard contracts/)"
 
 RISK_DIR := services/risk-scoring-api
+SETTLE_DIR := services/settlement-service
 DATA ?= data/out/full
 
 train-risk: ## Train the risk model into $(RISK_DIR)/models/runs/VERSION (VERSION=mlp-2026.11.1 DATA=data/out/full)
@@ -73,11 +74,36 @@ bench-risk: ## In-process latency of 1,000 single-request scorings with the prom
 migrate-risk: ## Apply the Alembic migrations to the risk_scoring database (needs Postgres: make up)
 	cd $(RISK_DIR) && uv run alembic upgrade head
 
-test-db: ## Start Postgres and run the SQL tests of the decision log against a throwaway database
+test-db: ## Start Postgres and run the SQL tests (risk decision log, settlement runs queue) on throwaway databases
 	docker compose up -d --wait postgres
 	docker compose exec -T postgres psql -U payments -d payments -c "CREATE DATABASE risk_scoring_test" 2>/dev/null || true
+	docker compose exec -T postgres psql -U payments -d payments -c "CREATE DATABASE settlement_test" 2>/dev/null || true
 	RISK_TEST_DATABASE_URL=postgresql+psycopg://payments:payments@localhost:$(or $(POSTGRES_PORT),5432)/risk_scoring_test \
-		uv run pytest $(RISK_DIR)/tests/persistence -v
+	SETTLEMENT_TEST_DATABASE_URL=postgresql+psycopg://payments:payments@localhost:$(or $(POSTGRES_PORT),5432)/settlement_test \
+		uv run pytest $(RISK_DIR)/tests/persistence $(SETTLE_DIR)/tests/persistence -v
 
 demo-score: ## Replay sample rows through the running API (make up first): scores, batch, replay, 409
 	uv run python scripts/score_sample.py --url http://localhost:$(or $(RISK_API_PORT),8001)
+
+# The settlement CLI takes absolute paths (the marts default to data/marts, ignored by git).
+SETTLE_DATA = $(abspath $(or $(DATA),data/samples))
+SETTLE_MARTS = $(abspath $(or $(MARTS),data/marts))
+
+settle-run: ## Settle one date, bypassing the queue (DATE=2026-01-15 DATA=data/samples MARTS=data/marts)
+	@test -n "$(DATE)" || { echo "DATE is required, e.g. make settle-run DATE=2026-01-15"; exit 1; }
+	uv run python -m settlement.batch run --date $(DATE) --input-dir $(SETTLE_DATA) --marts-dir $(SETTLE_MARTS)
+
+settle-all: ## Settle every date the PSP file covers, in one pass (DATA=data/out/full)
+	uv run python -m settlement.batch run-range --all --input-dir $(SETTLE_DATA) --marts-dir $(SETTLE_MARTS)
+
+verify-settlement: ## Compare the breaks mart with the generator's answer key: 100% or non-zero exit
+	uv run python -m settlement.batch verify --input-dir $(SETTLE_DATA) --marts-dir $(SETTLE_MARTS)
+
+migrate-settlement: ## Apply the Alembic migrations to the settlement database (needs Postgres: make up)
+	cd $(SETTLE_DIR) && uv run alembic upgrade head
+
+demo-settlement: ## Drive the running stack: POST a run, wait for the worker, page, export, replay
+	uv run python scripts/demo_settlement.py --url http://localhost:$(or $(SETTLEMENT_API_PORT),8002) $(if $(DATE),--date $(DATE))
+
+bench-settlement: ## Time one date and the whole range on a dataset, and the marts size (DATA=data/out/full)
+	uv run python scripts/bench_settlement.py --data $(or $(DATA),data/out/full)
