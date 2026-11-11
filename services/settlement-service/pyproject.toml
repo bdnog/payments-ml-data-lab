@@ -8,11 +8,20 @@ dependencies = [
     "uvicorn[standard]>=0.30",
     "pydantic-settings>=2.4",
     "polars>=1.0",
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.2",
     "payments-shared[http]",
 ]
 
+[dependency-groups]
+# Tests generate small datasets through payments_datagen, and prove with DuckDB that a BI tool can
+# query the Parquet marts. Neither is needed at runtime.
+dev = ["payments-datagen", "duckdb>=1.1"]
+
 [tool.uv.sources]
 payments-shared = { workspace = true }
+payments-datagen = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

@@ -229,3 +229,6 @@ data/**/*.parquet
 
 # Project: trained model runs are local; only models/current is committed
 services/*/models/runs/
+
+# Project: marts written by the settlement batch
+data/marts/
