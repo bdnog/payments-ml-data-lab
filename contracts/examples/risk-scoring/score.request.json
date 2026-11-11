@@ -1,0 +1,33 @@
+{
+  "transaction_id": "txn_0a1b2c3d4e5f",
+  "occurred_at": "2026-01-12T22:41:07.512345Z",
+  "amount_minor": 489900,
+  "currency": "BRL",
+  "channel": "web",
+  "installments": 1,
+  "merchant": {
+    "id": "mer_5d7a1e",
+    "mcc": "5732"
+  },
+  "card": {
+    "bin": "912345",
+    "issuer_country": "BR",
+    "is_new_for_merchant": true
+  },
+  "device": {
+    "id": "dev_0a1b2c3d4e",
+    "ip_country": "RU",
+    "is_proxy": true,
+    "is_new_for_account": true
+  },
+  "account": {
+    "id": "acc_33ba0290",
+    "age_days": 412
+  },
+  "behavior": {
+    "txn_count_1h": 1,
+    "txn_count_24h": 2,
+    "avg_amount_30d_minor": 62000,
+    "seconds_since_last_txn": 3120
+  }
+}

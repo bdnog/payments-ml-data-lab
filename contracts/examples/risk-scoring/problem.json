@@ -1,0 +1,7 @@
+{
+  "type": "https://payments-ml-data-lab.example/problems/idempotency-conflict",
+  "title": "Idempotency conflict",
+  "status": 409,
+  "detail": "transaction_id txn_0a1b2c3d4e5f was already scored with a different payload.",
+  "instance": "/v1/score"
+}
