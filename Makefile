@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help sync lint format test run-risk run-settlement-api up down build data-sample
+.PHONY: help sync lint format test run-risk run-settlement-api up down build data-sample contracts contracts-check
 
 help: ## List available targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -35,3 +35,10 @@ build: ## Build both service images
 
 data-sample: ## Regenerate the committed sample in data/samples (deterministic, seed 42)
 	uv run python -m payments_datagen generate --profile sample --out data/samples
+
+contracts: ## Export the OpenAPI documents to contracts/openapi
+	uv run python scripts/export_openapi.py
+
+contracts-check: contracts ## Fail if committed OpenAPI documents differ from the code
+	git diff --exit-code contracts/
+	test -z "$$(git ls-files --others --exclude-standard contracts/)"

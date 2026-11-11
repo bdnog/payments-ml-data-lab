@@ -1,0 +1,1019 @@
+{
+  "components": {
+    "schemas": {
+      "BreakType": {
+        "enum": [
+          "AMOUNT_MISMATCH",
+          "MISSING_IN_PSP",
+          "MISSING_IN_LEDGER",
+          "DUPLICATE_IN_PSP",
+          "FEE_MISMATCH",
+          "CHARGEBACK_NOT_IN_LEDGER"
+        ],
+        "title": "BreakType",
+        "type": "string"
+      },
+      "BreaksPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReconciliationBreak"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opaque cursor for the next page; null on the last page.",
+            "examples": [
+              "eyJiIjoiYnJrXzAwYTFiMmMzIn0"
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "BreaksPage",
+        "type": "object"
+      },
+      "Currency": {
+        "enum": [
+          "BRL"
+        ],
+        "title": "Currency",
+        "type": "string"
+      },
+      "DailySettlement": {
+        "description": "One row of the ``daily_settlement_by_merchant`` mart.",
+        "properties": {
+          "chargebacks_minor": {
+            "description": "Sum of CHARGEBACK gross amounts plus their flat fees.",
+            "examples": [
+              0
+            ],
+            "minimum": 0.0,
+            "title": "Chargebacks Minor",
+            "type": "integer"
+          },
+          "currency": {
+            "$ref": "#/components/schemas/Currency",
+            "examples": [
+              "BRL"
+            ]
+          },
+          "fee_minor": {
+            "description": "Sum of SALE fees.",
+            "examples": [
+              18750
+            ],
+            "minimum": 0.0,
+            "title": "Fee Minor",
+            "type": "integer"
+          },
+          "gross_minor": {
+            "description": "Sum of SALE gross amounts.",
+            "examples": [
+              1250000
+            ],
+            "minimum": 0.0,
+            "title": "Gross Minor",
+            "type": "integer"
+          },
+          "merchant_id": {
+            "examples": [
+              "mer_5d7a1e"
+            ],
+            "pattern": "^mer_[0-9a-f]{6}$",
+            "title": "Merchant Id",
+            "type": "string"
+          },
+          "net_minor": {
+            "description": "gross - fee - refunds - chargebacks; can be negative.",
+            "examples": [
+              1191250
+            ],
+            "title": "Net Minor",
+            "type": "integer"
+          },
+          "payment_count": {
+            "description": "Number of SALE records settled.",
+            "examples": [
+              132
+            ],
+            "minimum": 0.0,
+            "title": "Payment Count",
+            "type": "integer"
+          },
+          "refunds_minor": {
+            "description": "Sum of REFUND gross amounts.",
+            "examples": [
+              40000
+            ],
+            "minimum": 0.0,
+            "title": "Refunds Minor",
+            "type": "integer"
+          },
+          "settlement_date": {
+            "description": "Day the money moves.",
+            "examples": [
+              "2026-01-14"
+            ],
+            "format": "date",
+            "title": "Settlement Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "settlement_date",
+          "merchant_id",
+          "currency",
+          "payment_count",
+          "gross_minor",
+          "fee_minor",
+          "refunds_minor",
+          "chargebacks_minor",
+          "net_minor"
+        ],
+        "title": "DailySettlement",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "description": "Payload returned by every service's ``GET /health`` endpoint.",
+        "properties": {
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "service",
+          "version"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "Mart": {
+        "description": "The marts the batch produces. Values are the names of their data contracts.",
+        "enum": [
+          "daily_settlement_by_merchant",
+          "reconciliation_breaks",
+          "fee_summary"
+        ],
+        "title": "Mart",
+        "type": "string"
+      },
+      "ProblemDetails": {
+        "description": "An RFC 7807 problem, served as ``application/problem+json``.\n\nUsed for every error response of the HTTP services, including the ``501`` of routes that are\npart of a contract but not implemented yet.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Explanation specific to this occurrence.",
+            "examples": [
+              "POST /v1/score is part of the v1 contract but is not implemented yet."
+            ],
+            "title": "Detail"
+          },
+          "errors": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Validation issues (field location, message, type); only on 422.",
+            "title": "Errors"
+          },
+          "instance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "URI reference of this occurrence.",
+            "examples": [
+              "/v1/score"
+            ],
+            "title": "Instance"
+          },
+          "status": {
+            "description": "HTTP status code.",
+            "examples": [
+              501
+            ],
+            "maximum": 599.0,
+            "minimum": 100.0,
+            "title": "Status",
+            "type": "integer"
+          },
+          "title": {
+            "description": "Short, human-readable summary.",
+            "examples": [
+              "Not Implemented"
+            ],
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "default": "about:blank",
+            "description": "URI that identifies the kind of problem; 'about:blank' means 'see status'.",
+            "examples": [
+              "https://payments-ml-data-lab.example/problems/not-implemented"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "status"
+        ],
+        "title": "ProblemDetails",
+        "type": "object"
+      },
+      "ReconciliationBreak": {
+        "description": "One row of the ``reconciliation_breaks`` mart.",
+        "properties": {
+          "break_id": {
+            "examples": [
+              "brk_00a1b2c3"
+            ],
+            "pattern": "^brk_[0-9a-f]{8}$",
+            "title": "Break Id",
+            "type": "string"
+          },
+          "break_type": {
+            "$ref": "#/components/schemas/BreakType",
+            "examples": [
+              "AMOUNT_MISMATCH"
+            ]
+          },
+          "diff_minor": {
+            "description": "PSP minus ledger, in minor units.",
+            "examples": [
+              -1500
+            ],
+            "title": "Diff Minor",
+            "type": "integer"
+          },
+          "ledger_amount_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Amount on the ledger side; null when the ledger has no entry.",
+            "examples": [
+              48900
+            ],
+            "title": "Ledger Amount Minor"
+          },
+          "payment_id": {
+            "anyOf": [
+              {
+                "pattern": "^pay_[0-9a-f]{12}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "pay_5d7a1e3f7c0b"
+            ],
+            "title": "Payment Id"
+          },
+          "psp_amount_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Amount on the PSP side; null when the PSP has no record.",
+            "examples": [
+              47400
+            ],
+            "title": "Psp Amount Minor"
+          },
+          "psp_record_id": {
+            "anyOf": [
+              {
+                "pattern": "^psp_[0-9a-f]{12}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "psp_0010db36de61"
+            ],
+            "title": "Psp Record Id"
+          },
+          "run_date": {
+            "description": "Business date of the run that found it.",
+            "examples": [
+              "2026-01-15"
+            ],
+            "format": "date",
+            "title": "Run Date",
+            "type": "string"
+          },
+          "settlement_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Settlement date of the item; null when it cannot be determined.",
+            "examples": [
+              "2026-01-14"
+            ],
+            "title": "Settlement Date"
+          }
+        },
+        "required": [
+          "break_id",
+          "run_date",
+          "settlement_date",
+          "break_type",
+          "payment_id",
+          "psp_record_id",
+          "ledger_amount_minor",
+          "psp_amount_minor",
+          "diff_minor"
+        ],
+        "title": "ReconciliationBreak",
+        "type": "object"
+      },
+      "Run": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why the run failed; only when FAILED.",
+            "examples": [
+              null
+            ],
+            "title": "Error"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "2026-01-16T02:01:12Z"
+            ],
+            "title": "Finished At"
+          },
+          "requested_at": {
+            "examples": [
+              "2026-01-16T02:00:00Z"
+            ],
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "run_date": {
+            "examples": [
+              "2026-01-15"
+            ],
+            "format": "date",
+            "title": "Run Date",
+            "type": "string"
+          },
+          "run_id": {
+            "examples": [
+              "run_4f9c2a7d10be"
+            ],
+            "pattern": "^run_[0-9a-f]{12}$",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "2026-01-16T02:00:03Z"
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus",
+            "examples": [
+              "DONE"
+            ]
+          }
+        },
+        "required": [
+          "run_id",
+          "run_date",
+          "status",
+          "requested_at",
+          "started_at",
+          "finished_at",
+          "error"
+        ],
+        "title": "Run",
+        "type": "object"
+      },
+      "RunRequest": {
+        "properties": {
+          "run_date": {
+            "description": "Business date to settle.",
+            "examples": [
+              "2026-01-15"
+            ],
+            "format": "date",
+            "title": "Run Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_date"
+        ],
+        "title": "RunRequest",
+        "type": "object"
+      },
+      "RunStatus": {
+        "enum": [
+          "PENDING",
+          "RUNNING",
+          "DONE",
+          "FAILED"
+        ],
+        "title": "RunStatus",
+        "type": "string"
+      },
+      "SettlementsPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DailySettlement"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opaque cursor for the next page; null on the last page.",
+            "examples": [
+              "eyJzIjoiMjAyNi0wMS0xNCJ9"
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "SettlementsPage",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Read-mostly API over the marts produced by the settlement batch. **v1 contract**: only `/health`\nis implemented; the `/v1` routes answer `501`.\n",
+    "title": "settlement-service",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
+    "/v1/exports/{mart}/{date}": {
+      "get": {
+        "description": "The mart produced by the run of the given business date, as a Parquet file. The format is carried by the media type, so the URL has no `.parquet` suffix.",
+        "operationId": "export_mart",
+        "parameters": [
+          {
+            "description": "Which mart to export.",
+            "in": "path",
+            "name": "mart",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Mart",
+              "description": "Which mart to export."
+            }
+          },
+          {
+            "description": "Run date (`run_date`) of the mart.",
+            "in": "path",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "description": "Run date (`run_date`) of the mart.",
+              "format": "date",
+              "title": "Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.apache.parquet": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The mart as a Parquet file."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "501": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not implemented"
+          }
+        },
+        "summary": "Download a mart as Parquet",
+        "tags": [
+          "exports"
+        ]
+      }
+    },
+    "/v1/reconciliation/breaks": {
+      "get": {
+        "description": "Rows of the `reconciliation_breaks` mart. `date` is the business date of the run that found the break (`run_date`). Cursor pagination, as for settlements.",
+        "operationId": "list_reconciliation_breaks",
+        "parameters": [
+          {
+            "description": "Run date (`run_date`) to list.",
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Run date (`run_date`) to list.",
+              "title": "Date"
+            }
+          },
+          {
+            "description": "Only breaks of this type.",
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/BreakType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only breaks of this type.",
+              "title": "Type"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          },
+          {
+            "description": "Maximum number of items in the page.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "description": "Maximum number of items in the page.",
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreaksPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "501": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not implemented"
+          }
+        },
+        "summary": "Reconciliation breaks",
+        "tags": [
+          "reconciliation"
+        ]
+      }
+    },
+    "/v1/runs": {
+      "post": {
+        "description": "Idempotent by `run_date`. `202` when a new run is accepted; `200` with the existing run when that date already has a run that has not failed.",
+        "operationId": "create_run",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            },
+            "description": "A non-failed run for this date already exists."
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "501": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not implemented"
+          }
+        },
+        "summary": "Request a settlement run",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/v1/runs/{run_id}": {
+      "get": {
+        "operationId": "get_run",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "pattern": "^run_[0-9a-f]{12}$",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "501": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not implemented"
+          }
+        },
+        "summary": "Get a settlement run",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/v1/settlements": {
+      "get": {
+        "description": "Rows of the `daily_settlement_by_merchant` mart, ordered by `settlement_date`, `merchant_id`. Cursor pagination: pass `next_cursor` back as `cursor` until it is null.",
+        "operationId": "list_settlements",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "merchant_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^mer_[0-9a-f]{6}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Merchant Id"
+            }
+          },
+          {
+            "description": "First settlement date, inclusive.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "First settlement date, inclusive.",
+              "title": "From"
+            }
+          },
+          {
+            "description": "Last settlement date, inclusive.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Last settlement date, inclusive.",
+              "title": "To"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          },
+          {
+            "description": "Maximum number of items in the page.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "description": "Maximum number of items in the page.",
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettlementsPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "501": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not implemented"
+          }
+        },
+        "summary": "Daily settlement per merchant",
+        "tags": [
+          "settlements"
+        ]
+      }
+    }
+  }
+}

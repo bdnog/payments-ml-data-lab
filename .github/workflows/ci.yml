@@ -30,6 +30,14 @@ jobs:
       - name: Test
         run: uv run pytest
 
+      - name: Check that the exported OpenAPI contracts are up to date
+        run: make contracts-check
+
+      - name: Generate the sample profile and validate it
+        run: |
+          uv run python -m payments_datagen generate --profile sample --out "${{ runner.temp }}/sample"
+          uv run python -m payments_datagen validate "${{ runner.temp }}/sample"
+
   docker-build:
     runs-on: ubuntu-latest
     strategy:
