@@ -819,7 +819,7 @@ version = "0.1.0"
 source = { editable = "services/settlement-service" }
 dependencies = [
     { name = "fastapi" },
-    { name = "payments-shared" },
+    { name = "payments-shared", extra = ["http"] },
     { name = "polars" },
     { name = "pydantic-settings" },
     { name = "uvicorn", extra = ["standard"] },
@@ -828,7 +828,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
-    { name = "payments-shared", editable = "packages/shared" },
+    { name = "payments-shared", extras = ["http"], editable = "packages/shared" },
     { name = "polars", specifier = ">=1.0" },
     { name = "pydantic-settings", specifier = ">=2.4" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },

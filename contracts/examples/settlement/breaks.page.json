@@ -1,0 +1,27 @@
+{
+  "items": [
+    {
+      "break_id": "brk_00a1b2c3",
+      "run_date": "2026-01-15",
+      "settlement_date": "2026-01-14",
+      "break_type": "AMOUNT_MISMATCH",
+      "payment_id": "pay_5d7a1e3f7c0b",
+      "psp_record_id": "psp_0010db36de61",
+      "ledger_amount_minor": 48900,
+      "psp_amount_minor": 47400,
+      "diff_minor": -1500
+    },
+    {
+      "break_id": "brk_00a1b2c4",
+      "run_date": "2026-01-15",
+      "settlement_date": "2026-01-14",
+      "break_type": "MISSING_IN_PSP",
+      "payment_id": "pay_80f4733e3f7c",
+      "psp_record_id": null,
+      "ledger_amount_minor": 15990,
+      "psp_amount_minor": null,
+      "diff_minor": -15990
+    }
+  ],
+  "next_cursor": null
+}

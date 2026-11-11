@@ -1,0 +1,27 @@
+{
+  "items": [
+    {
+      "settlement_date": "2026-01-14",
+      "merchant_id": "mer_5d7a1e",
+      "currency": "BRL",
+      "payment_count": 132,
+      "gross_minor": 1250000,
+      "fee_minor": 18750,
+      "refunds_minor": 40000,
+      "chargebacks_minor": 0,
+      "net_minor": 1191250
+    },
+    {
+      "settlement_date": "2026-01-14",
+      "merchant_id": "mer_832b37",
+      "currency": "BRL",
+      "payment_count": 9,
+      "gross_minor": 86400,
+      "fee_minor": 2160,
+      "refunds_minor": 0,
+      "chargebacks_minor": 41400,
+      "net_minor": 42840
+    }
+  ],
+  "next_cursor": "eyJzIjoiMjAyNi0wMS0xNCJ9"
+}
